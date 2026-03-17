@@ -1,0 +1,7 @@
+{
+  "rewrites": [
+    { "source": "/", "destination": "/wastewise-complete.html" },
+    { "source": "/scanner", "destination": "/scanner.html" },
+    { "source": "/result", "destination": "/dusbin/index.html" }
+  ]
+}
