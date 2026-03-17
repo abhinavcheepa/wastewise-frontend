@@ -2324,7 +2324,7 @@ async function loadWasteModel() {
 
 async function predictFromCanvas(canvas) {
   const model = await loadWasteModel();
-  if (!model) return { waste_type:'trash', bin:'Black Bin', color:'#374151', emoji:'🗑️', confidence:50 };
+  if (!model) return { type:'trash', bin:'Black Bin', color:'#374151', emoji:'🗑️', confidence:50 };
   const img = tf.browser.fromPixels(canvas).resizeBilinear([224,224]).expandDims(0).div(255.0);
   const pred = model.predict(img);
   const probs = await pred.data();
@@ -2332,7 +2332,7 @@ async function predictFromCanvas(canvas) {
   const idx = probs.indexOf(Math.max(...probs));
   const cls = CLASSES[idx];
   const info = BIN_MAP[cls] || BIN_MAP.trash;
-  return { waste_type:cls, bin:info.bin, color:info.color, emoji:info.emoji, confidence:Math.round(probs[idx]*10000)/100 };
+  return { type:cls, bin:info.bin, color:info.color, emoji:info.emoji, confidence:Math.round(probs[idx]*10000)/100 };
 }
 
 /* ===== DUSTBIN LOCATIONS (Indore) ===== */
