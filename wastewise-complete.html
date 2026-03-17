@@ -4,7 +4,12 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>WasteWise — Smart Waste Scanner</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#16a34a">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&family=Caveat:wght@600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
 
     /* === PAGE VISIBILITY === */
@@ -1683,6 +1688,32 @@
       margin-bottom: 1.5rem;
     }
 
+    /* ─── Map Section ─── */
+    .map-section {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .map-header {
+      font-weight: 700; font-size: 1rem;
+      color: rgba(255,255,255,0.9);
+      margin-bottom: 0.75rem;
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+    .btn-navigate {
+      display: block; text-align: center;
+      background: linear-gradient(135deg, #16a34a, #15803d);
+      color: #fff; text-decoration: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 12px;
+      font-weight: 700; font-size: 0.95rem;
+      transition: all 0.2s;
+    }
+    .btn-navigate:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(22,163,74,0.4); }
+    .bin-marker { font-size: 20px; line-height: 28px; text-align: center; background: none !important; border: none !important; }
+
     /* ─── Action Buttons ─── */
     
     
@@ -2131,6 +2162,14 @@
         <div class="points-badge">⭐ +10 Green Points Earned!</div>
       </div>
 
+      <!-- Map Navigation -->
+      <div class="map-section">
+        <div class="map-header"><span>📍</span> Nearest Bin Location</div>
+        <div id="mapContainer" style="width:100%;height:220px;border-radius:12px;overflow:hidden;margin-bottom:0.75rem;background:#1a2e1a;"></div>
+        <div id="mapStatus" style="color:#94a3b8;font-size:0.82rem;text-align:center;margin-bottom:0.5rem;">Locating you…</div>
+        <a id="navigateBtn" href="#" target="_blank" class="btn-navigate" style="display:none;">🧭 Navigate to Bin</a>
+      </div>
+
       <!-- Actions -->
       <div class="action-row">
         <a href="#" onclick="showPage('scanner');return false;" class="btn-scan">📷 Scan Again</a>
@@ -2263,10 +2302,65 @@ function showPage(name, params) {
   
 })();
 
+/* ===== WASTEWISE AI — Browser-Side TFjs ===== */
+const CLASSES = ['cardboard','glass','metal','paper','plastic','trash'];
+const BIN_MAP = {
+  plastic:  {bin:'Blue Bin',  color:'#2563eb',emoji:'🔵'},
+  paper:    {bin:'Blue Bin',  color:'#2563eb',emoji:'🔵'},
+  metal:    {bin:'Blue Bin',  color:'#2563eb',emoji:'🔵'},
+  cardboard:{bin:'Blue Bin',  color:'#2563eb',emoji:'🔵'},
+  glass:    {bin:'Blue Bin',  color:'#06b6d4',emoji:'🫙'},
+  trash:    {bin:'Black Bin', color:'#374151',emoji:'🗑️'}
+};
+var _wasteModel = null;
+async function loadWasteModel() {
+  if (_wasteModel) return _wasteModel;
+  try {
+    _wasteModel = await tf.loadGraphModel('./ai_model/model.json');
+    console.log('✅ TFjs model loaded in browser');
+  } catch(e) { console.warn('Model load failed:', e); }
+  return _wasteModel;
+}
+
+async function predictFromCanvas(canvas) {
+  const model = await loadWasteModel();
+  if (!model) return { waste_type:'trash', bin:'Black Bin', color:'#374151', emoji:'🗑️', confidence:50 };
+  const img = tf.browser.fromPixels(canvas).resizeBilinear([224,224]).expandDims(0).div(255.0);
+  const pred = model.predict(img);
+  const probs = await pred.data();
+  img.dispose(); pred.dispose();
+  const idx = probs.indexOf(Math.max(...probs));
+  const cls = CLASSES[idx];
+  const info = BIN_MAP[cls] || BIN_MAP.trash;
+  return { waste_type:cls, bin:info.bin, color:info.color, emoji:info.emoji, confidence:Math.round(probs[idx]*10000)/100 };
+}
+
+/* ===== DUSTBIN LOCATIONS (Indore) ===== */
+const DUSTBINS = [
+  {lat:22.7196,lng:75.8577,name:'Rajwada Bin',type:'all'},
+  {lat:22.7183,lng:75.8570,name:'Rajwada Chowk Bin',type:'all'},
+  {lat:22.7214,lng:75.8557,name:'Sarafa Bazaar Bin',type:'all'},
+  {lat:22.7190,lng:75.8685,name:'Chappan Dukan Bin',type:'all'},
+  {lat:22.7251,lng:75.8643,name:'Kanch Mandir Bin',type:'all'},
+  {lat:22.7241,lng:75.8541,name:'Bada Ganpati Bin',type:'all'},
+  {lat:22.7136,lng:75.8556,name:'Lal Bagh Palace Bin',type:'all'},
+  {lat:22.7196,lng:75.8517,name:'GPO Chouraha Bin',type:'all'},
+  {lat:22.7162,lng:75.8571,name:'Palia Gate Bin',type:'all'},
+  {lat:22.7232,lng:75.8586,name:'Indore Junction Bin',type:'all'},
+  {lat:22.7175,lng:75.8463,name:'Treasure Island Bin',type:'all'},
+  {lat:22.7271,lng:75.8929,name:'Vijay Nagar Bin',type:'all'},
+  {lat:22.7522,lng:75.8944,name:'Super Corridor Bin',type:'all'},
+  {lat:22.6944,lng:75.8740,name:'Palasia Bin',type:'all'},
+  {lat:22.7099,lng:75.8600,name:'MG Road Bin',type:'all'},
+];
+
 /* ===== SCANNER JS ===== */
 var _scannerInited = false;
 function initScannerPage() {
   if (_scannerInited) return; _scannerInited = true;
+
+    /* ── Preload model early ── */
+    loadWasteModel();
 
     /* ── Slideshow ── */
     const LOCS = ['Rajwada Palace, Indore','Lal Bagh Palace, Indore','Sarafa Bazaar, Indore','Chappan Dukan, Indore','Kanch Mandir, Indore'];
@@ -2323,26 +2417,32 @@ function initScannerPage() {
     startCamera();
 
     /* ── CAPTURE: instant photo from live feed ── */
-    captureBtn.addEventListener('click', () => {
+    captureBtn.addEventListener('click', async () => {
       errorBar.style.display = 'none';
       captureBtn.disabled = true;
       uploadPhotoBtn.disabled = true;
 
-      // Flash effect
       flashEl.style.transition = 'none';
       flashEl.style.opacity = '1';
       setTimeout(() => { flashEl.style.transition = 'opacity 0.4s'; flashEl.style.opacity = '0'; }, 80);
 
-      // Capture frame from video
       canvas.width  = video.videoWidth  || 640;
       canvas.height = video.videoHeight || 480;
       canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-      const base64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
 
-      // Show AI overlay
       aiOverlay.style.display = 'flex';
       setStatus('AI is analysing your photo…');
-      sendToBackend(base64);
+
+      try {
+        const data = await predictFromCanvas(canvas);
+        showPage('result', data);
+      } catch(err) {
+        aiOverlay.style.display = 'none';
+        captureBtn.disabled = false;
+        uploadPhotoBtn.disabled = false;
+        setStatus('Error — try again');
+        showError('⚠️ AI could not process the image. Please try again.');
+      }
     });
 
     /* ── Upload Photo from gallery ── */
@@ -2360,47 +2460,23 @@ function initScannerPage() {
       aiOverlay.style.display = 'flex';
       setStatus('AI is analysing your photo…');
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const base64 = e.target.result.split(',')[1];
-        sendToBackend(base64);
+      const img = new Image();
+      img.onload = async () => {
+        canvas.width = img.width; canvas.height = img.height;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+        try {
+          const data = await predictFromCanvas(canvas);
+          showPage('result', data);
+        } catch(err) {
+          aiOverlay.style.display = 'none';
+          captureBtn.disabled = false;
+          uploadPhotoBtn.disabled = false;
+          setStatus('Error — try again');
+          showError('⚠️ AI could not process the image. Please try again.');
+        }
       };
-      reader.readAsDataURL(file);
+      img.src = URL.createObjectURL(file);
     });
-
-    /* ── Send to Python backend and go to result ── */
-    async function sendToBackend(base64Image) {
-      try {
-        const res = await fetch('https://wastewise-backend-jwtk.onrender.com/predict', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ image: base64Image })
-        });
-
-        if (!res.ok) throw new Error('Server error ' + res.status);
-
-        const data = await res.json();
-
-        const params = new URLSearchParams({
-          type:       data.waste_type,
-          bin:        data.bin,
-          color:      data.color,
-          emoji:      data.emoji,
-          confidence: data.confidence
-        });
-
-        // Auto-navigate to result page
-        showPage('result', Object.fromEntries(params.entries()));
-
-      } catch (err) {
-        aiOverlay.style.display = 'none';
-        captureBtn.disabled = false;
-        uploadPhotoBtn.disabled = false;
-        setStatus('Error — try again');
-        showError('⚠️ Could not connect to AI server. Please try again in a moment.');
-      }
-    }
-  
 }
 
 /* ===== RESULT JS ===== */
@@ -2480,41 +2556,107 @@ function initResultPage() {
       document.getElementById('confBar').style.width = Math.min(conf, 100) + '%';
     }, 200);
 
+    /* ─── Map Navigation ─── */
+    initMap();
+
     /* ─── Gallery Upload ─── */
     const galBtn       = document.getElementById('galBtn');
-    const galleryInput = document.getElementById('resultGalleryInput');
+    const rGalleryInput = document.getElementById('resultGalleryInput');
 
     if (!galBtn._bound) { galBtn._bound = true;
-    galBtn.addEventListener('click', () => galleryInput.click());
+    galBtn.addEventListener('click', () => rGalleryInput.click());
     }
 
-    if (!galleryInput._bound) { galleryInput._bound = true;
-    galleryInput.addEventListener('change', async () => {
-      const file = galleryInput.files[0];
+    if (!rGalleryInput._bound) { rGalleryInput._bound = true;
+    rGalleryInput.addEventListener('change', async () => {
+      const file = rGalleryInput.files[0];
       if (!file) return;
       galBtn.textContent = '⏳ Analysing…';
       galBtn.disabled = true;
-
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        const base64 = e.target.result.split(',')[1];
+      const c = document.createElement('canvas');
+      const img = new Image();
+      img.onload = async () => {
+        c.width = img.width; c.height = img.height;
+        c.getContext('2d').drawImage(img, 0, 0);
         try {
-          const res = await fetch('https://wastewise-backend-jwtk.onrender.com/predict', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image: base64 })
-          });
-          const d = await res.json();
-          const params = new URLSearchParams({ type: d.waste_type, bin: d.bin, color: d.color, emoji: d.emoji, confidence: d.confidence });
-          showPage('result', Object.fromEntries(params.entries()));
+          const d = await predictFromCanvas(c);
+          showPage('result', d);
         } catch {
-          alert('Could not reach AI backend. Make sure api.py is running.');
+          alert('AI could not process the image.');
           galBtn.textContent = '🖼️ Upload Photo';
           galBtn.disabled = false;
         }
       };
-      reader.readAsDataURL(file);
+      img.src = URL.createObjectURL(file);
     });
     }
+}
+
+/* ===== MAP NAVIGATION ===== */
+var _mapInstance = null;
+function initMap() {
+  const mapEl = document.getElementById('mapContainer');
+  const mapStatus = document.getElementById('mapStatus');
+  const navBtn = document.getElementById('navigateBtn');
+  if (!mapEl) return;
+
+  // Destroy old map
+  if (_mapInstance) { _mapInstance.remove(); _mapInstance = null; }
+
+  function findNearest(lat, lng) {
+    let best = null, bestDist = Infinity;
+    DUSTBINS.forEach(b => {
+      const d = Math.sqrt(Math.pow(lat - b.lat, 2) + Math.pow(lng - b.lng, 2));
+      if (d < bestDist) { bestDist = d; best = b; }
+    });
+    return best;
+  }
+
+  if (!navigator.geolocation) {
+    mapStatus.textContent = 'Geolocation not supported';
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(pos => {
+    const uLat = pos.coords.latitude, uLng = pos.coords.longitude;
+    const nearest = findNearest(uLat, uLng);
+
+    _mapInstance = L.map(mapEl).setView([uLat, uLng], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '© OpenStreetMap'
+    }).addTo(_mapInstance);
+
+    // User marker
+    L.marker([uLat, uLng]).addTo(_mapInstance)
+     .bindPopup('📍 You are here').openPopup();
+
+    // Dustbin markers
+    const binIcon = L.divIcon({ html:'🗑️', className:'bin-marker', iconSize:[28,28] });
+    DUSTBINS.forEach(b => {
+      L.marker([b.lat, b.lng], {icon: binIcon}).addTo(_mapInstance)
+       .bindPopup('🗑️ ' + b.name);
+    });
+
+    // Line to nearest
+    if (nearest) {
+      L.polyline([[uLat,uLng],[nearest.lat,nearest.lng]], {color:'#16a34a',weight:3,dashArray:'8'}).addTo(_mapInstance);
+      const dist = (Math.sqrt(Math.pow(uLat-nearest.lat,2)+Math.pow(uLng-nearest.lng,2))*111000).toFixed(0);
+      mapStatus.textContent = '🗑️ ' + nearest.name + ' — ~' + dist + 'm away';
+      navBtn.href = 'https://www.google.com/maps/dir/' + uLat + ',' + uLng + '/' + nearest.lat + ',' + nearest.lng;
+      navBtn.style.display = 'block';
+    }
+
+    setTimeout(() => _mapInstance.invalidateSize(), 300);
+  }, () => {
+    mapStatus.textContent = 'Location access denied — enable GPS to see nearby bins';
+  }, { enableHighAccuracy: true, timeout: 10000 });
+}
+
+/* ===== SERVICE WORKER REGISTRATION ===== */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').then(r => console.log('SW registered:', r.scope));
+  });
 }
 
 </script>

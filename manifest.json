@@ -1,0 +1,16 @@
+{
+  "name": "WasteWise",
+  "short_name": "WasteWise",
+  "description": "AI-powered waste identification & navigation to nearest bin",
+  "start_url": "./wastewise-complete.html",
+  "display": "standalone",
+  "background_color": "#060f08",
+  "theme_color": "#16a34a",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♻️</text></svg>",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
