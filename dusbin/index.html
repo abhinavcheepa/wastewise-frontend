@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WasteWise — Result</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Outfit', sans-serif;
+      min-height: 100vh;
+      background: #060f08;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ─── Slideshow Background ─── */
+    .bg-slideshow { position: fixed; inset: 0; z-index: 0; }
+    .bg-slide {
+      position: absolute; inset: 0;
+      background-size: cover; background-position: center;
+      opacity: 0; transition: opacity 1.4s ease-in-out;
+    }
+    .bg-slide.active { opacity: 1; }
+    .bg-overlay {
+      position: fixed; inset: 0;
+      background: rgba(4, 12, 6, 0.85); z-index: 1;
+    }
+
+    /* ─── Nav ─── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 2.5rem;
+      background: rgba(4,12,6,0.65); backdrop-filter: blur(18px);
+      border-bottom: 1px solid rgba(82,214,138,0.12);
+    }
+    .logo {
+      font-size: 1.2rem; font-weight: 900; color: #fff; text-decoration: none;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .logo-icon {
+      background: #1b8a4c; border-radius: 9px;
+      width: 30px; height: 30px;
+      display: flex; align-items: center; justify-content: center; font-size: 0.9rem;
+    }
+
+    /* ─── Slide Dots ─── */
+    .slide-dots {
+      position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+      z-index: 10; display: flex; gap: 0.4rem;
+    }
+    .dot {
+      width: 7px; height: 7px; border-radius: 100px;
+      background: rgba(255,255,255,0.25); transition: all 0.4s; cursor: pointer;
+    }
+    .dot.active { background: #52d68a; width: 20px; }
+
+    /* ─── Main ─── */
+    .main {
+      position: relative; z-index: 10;
+      min-height: 100vh; width: 100%;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 6rem 1.5rem 5rem;
+    }
+
+    /* ─── CARD ─── */
+    .result-card {
+      background: rgba(4,12,6,0.75);
+      backdrop-filter: blur(28px);
+      border: 1.5px solid rgba(82,214,138,0.25);
+      border-radius: 32px;
+      padding: 2.5rem 2rem;
+      max-width: 480px; width: 100%;
+      box-shadow: 0 40px 100px rgba(0,0,0,0.6);
+      animation: slideUp 0.5s ease both;
+      position: relative; overflow: hidden;
+    }
+
+    /* top shimmer bar */
+    .result-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--c1,#52d68a), var(--c2,#1b8a4c), var(--c1,#52d68a));
+      background-size: 200% 100%;
+      animation: shimmer 2.5s linear infinite;
+    }
+    @keyframes shimmer { 0%{background-position:200% center} 100%{background-position:-200% center} }
+    @keyframes slideUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+
+    /* ─── Detected label ─── */
+    .scan-tag {
+      text-align: center;
+      font-size: 0.7rem; font-weight: 800;
+      letter-spacing: 0.15em; text-transform: uppercase;
+      color: rgba(255,255,255,0.4);
+      margin-bottom: 0.6rem;
+    }
+
+    /* ─── Waste emoji + type ─── */
+    .waste-hero {
+      text-align: center; margin-bottom: 1.8rem;
+    }
+    .waste-emoji {
+      font-size: 4rem; display: block; margin-bottom: 0.5rem;
+      animation: bounceIn 0.6s 0.15s ease both;
+    }
+    @keyframes bounceIn {
+      0%{transform:scale(0);opacity:0} 60%{transform:scale(1.2)} 80%{transform:scale(0.93)} 100%{transform:scale(1);opacity:1}
+    }
+    .waste-label {
+      font-size: 0.72rem; font-weight: 800; letter-spacing: 0.14em;
+      text-transform: uppercase; color: rgba(255,255,255,0.38);
+      margin-bottom: 0.3rem;
+    }
+    .waste-type {
+      font-size: 2.4rem; font-weight: 900; color: #fff;
+      letter-spacing: -0.04em; text-transform: capitalize;
+      line-height: 1;
+    }
+
+    /* ─── Divider ─── */
+    .divider {
+      height: 1px; background: rgba(255,255,255,0.07);
+      margin: 1.5rem 0;
+    }
+
+    /* ─── BIG BIN SECTION ─── */
+    .bin-section {
+      text-align: center; margin-bottom: 1.8rem;
+    }
+
+    .throw-label {
+      font-size: 0.78rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: rgba(255,255,255,0.38);
+      margin-bottom: 0.8rem;
+    }
+
+    /* The big animated bin */
+    .bin-visual {
+      position: relative;
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .bin-body {
+      width: 110px; height: 120px;
+      border-radius: 8px 8px 14px 14px;
+      position: relative;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 3.2rem;
+      box-shadow: 0 16px 50px rgba(0,0,0,0.4);
+      animation: floatBin 3s ease-in-out infinite;
+    }
+    @keyframes floatBin {
+      0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)}
+    }
+
+    /* Bin lid */
+    .bin-lid {
+      width: 124px; height: 18px;
+      border-radius: 6px;
+      margin-bottom: -3px;
+      position: relative;
+      z-index: 2;
+    }
+
+    /* Bin stripes */
+    .bin-body::after {
+      content: '';
+      position: absolute;
+      left: 30%; right: 30%;
+      top: 20%; bottom: 20%;
+      border-left: 3px solid rgba(255,255,255,0.18);
+      border-right: 3px solid rgba(255,255,255,0.18);
+    }
+
+    /* Glow ring under bin */
+    .bin-glow {
+      width: 80px; height: 18px;
+      border-radius: 50%;
+      margin-top: -4px;
+      filter: blur(8px);
+      opacity: 0.45;
+      animation: floatBin 3s ease-in-out infinite;
+    }
+
+    .bin-name {
+      font-size: 1.5rem; font-weight: 900; color: #fff;
+      letter-spacing: -0.03em; margin-top: 0.4rem;
+    }
+
+    .bin-instruction {
+      font-size: 0.82rem; color: rgba(255,255,255,0.45); margin-top: 0.25rem;
+    }
+
+    /* ─── Confidence ─── */
+    .conf-row {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 0.4rem;
+    }
+    .conf-label { font-size: 0.75rem; font-weight: 600; color: rgba(255,255,255,0.4); }
+    .conf-pct   { font-size: 0.75rem; font-weight: 900; }
+
+    .conf-bar-bg {
+      height: 6px; background: rgba(255,255,255,0.07);
+      border-radius: 100px; overflow: hidden; margin-bottom: 1.6rem;
+    }
+    .conf-bar-fill {
+      height: 100%; border-radius: 100px; width: 0%;
+      transition: width 1.2s ease-out;
+    }
+
+    /* ─── Points badge ─── */
+    .points-badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      background: rgba(234,179,8,0.12);
+      border: 1px solid rgba(234,179,8,0.3);
+      color: #facc15;
+      font-size: 0.8rem; font-weight: 800;
+      padding: 0.4rem 1rem; border-radius: 100px;
+      margin-bottom: 1.5rem;
+    }
+
+    /* ─── Action Buttons ─── */
+    .action-row {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;
+    }
+    .btn-scan {
+      background: #1b8a4c; color: #fff; border: none;
+      padding: 1rem; font-size: 0.95rem; font-weight: 800;
+      border-radius: 14px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+      font-family: 'Outfit', sans-serif;
+      box-shadow: 0 8px 24px rgba(27,138,76,0.4);
+      transition: transform 0.2s, box-shadow 0.2s;
+      text-decoration: none;
+    }
+    .btn-scan:hover { transform: translateY(-2px); box-shadow: 0 14px 32px rgba(27,138,76,0.5); }
+
+    .btn-gallery {
+      background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.8);
+      border: 1px solid rgba(255,255,255,0.18);
+      padding: 1rem; font-size: 0.95rem; font-weight: 700;
+      border-radius: 14px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+      font-family: 'Outfit', sans-serif;
+      transition: background 0.2s, border-color 0.2s, transform 0.2s;
+    }
+    .btn-gallery:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.35); transform: translateY(-2px); }
+
+    #galleryInput { display: none; }
+
+    /* ─── Location tag ─── */
+    .location-tag {
+      position: fixed; bottom: 3.8rem; left: 1.5rem; z-index: 10;
+      background: rgba(4,12,6,0.75); backdrop-filter: blur(10px);
+      border: 1px solid rgba(82,214,138,0.22); border-radius: 12px;
+      padding: 0.5rem 0.9rem;
+      display: flex; align-items: center; gap: 0.4rem;
+      color: #fff; font-size: 0.75rem; font-weight: 600;
+    }
+    .loc-dot {
+      width: 7px; height: 7px; background: #52d68a; border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%,100%{ box-shadow: 0 0 0 0 rgba(82,214,138,0.5); }
+      50%    { box-shadow: 0 0 0 5px rgba(82,214,138,0); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Slideshow -->
+  <div class="bg-slideshow">
+    <div class="bg-slide active" style="background-image:url('../indore1.jpg')"></div>
+    <div class="bg-slide" style="background-image:url('../indore2.jpg')"></div>
+    <div class="bg-slide" style="background-image:url('../indore3.jpg')"></div>
+    <div class="bg-slide" style="background-image:url('../indore4.jpg')"></div>
+    <div class="bg-slide" style="background-image:url('../indore5.jpg')"></div>
+  </div>
+  <div class="bg-overlay"></div>
+
+  <!-- Nav -->
+  <nav>
+    <a href="../index.html" class="logo"><div class="logo-icon">♻️</div>WasteWise</a>
+  </nav>
+
+  <!-- Slide Dots -->
+  <div class="slide-dots" id="slideDots"></div>
+
+  <!-- Location tag -->
+  <div class="location-tag">
+    <div class="loc-dot"></div>
+    <span id="locLabel">Rajwada Palace, Indore</span>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="result-card" id="resultCard">
+
+      <!-- Scanned object -->
+      <div class="scan-tag">🔍 AI Scan Result</div>
+      <div class="waste-hero">
+        <span class="waste-emoji" id="wasteEmoji">♻️</span>
+        <div class="waste-label">Detected Garbage Type</div>
+        <div class="waste-type" id="wasteTypeName">—</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Bin info -->
+      <div class="bin-section">
+        <div class="throw-label">Throw it in</div>
+
+        <div class="bin-visual">
+          <div class="bin-lid" id="binLid"></div>
+          <div class="bin-body" id="binBody"> <span id="binBodyIcon">🗑️</span> </div>
+          <div class="bin-glow" id="binGlow"></div>
+        </div>
+
+        <div class="bin-name" id="binName">—</div>
+        <div class="bin-instruction" id="binInstruction">Locate the correct coloured bin near you</div>
+      </div>
+
+      <!-- Confidence -->
+      <div class="conf-row">
+        <span class="conf-label">AI Confidence</span>
+        <span class="conf-pct" id="confPct" style="color:#52d68a">—</span>
+      </div>
+      <div class="conf-bar-bg"><div class="conf-bar-fill" id="confBar" style="background:#52d68a"></div></div>
+
+      <!-- Points -->
+      <div style="text-align:center; margin-bottom:1.5rem;">
+        <div class="points-badge">⭐ +10 Green Points Earned!</div>
+      </div>
+
+      <!-- Actions -->
+      <div class="action-row">
+        <a href="../scanner.html" class="btn-scan">📷 Scan Again</a>
+        <button class="btn-gallery" id="galBtn">🖼️ Upload Photo</button>
+      </div>
+
+    </div>
+  </div>
+
+  <input type="file" id="galleryInput" accept="image/*">
+
+  <script>
+    /* ─── Slideshow ─── */
+    const locs   = ['Rajwada Palace, Indore','Lal Bagh Palace, Indore','Sarafa Bazaar, Indore','Chappan Dukan, Indore','Kanch Mandir, Indore'];
+    const slides = document.querySelectorAll('.bg-slide');
+    const dotsC  = document.getElementById('slideDots');
+    const locLbl = document.getElementById('locLabel');
+    let cur = 0;
+
+    slides.forEach((_, i) => {
+      const d = document.createElement('div');
+      d.className = 'dot' + (i === 0 ? ' active' : '');
+      d.onclick   = () => goTo(i);
+      dotsC.appendChild(d);
+    });
+
+    function goTo(n) {
+      slides[cur].classList.remove('active'); dotsC.children[cur].classList.remove('active');
+      cur = n;
+      slides[cur].classList.add('active'); dotsC.children[cur].classList.add('active');
+      locLbl.textContent = locs[cur];
+    }
+    setInterval(() => goTo((cur + 1) % slides.length), 4500);
+
+    /* ─── Parse URL params ─── */
+    const p    = new URLSearchParams(window.location.search);
+    const type = (p.get('type')  || 'Unknown').toLowerCase();
+    const bin  = p.get('bin')    || 'General Bin';
+    const color= p.get('color')  || '#1b8a4c';
+    const emoji= p.get('emoji')  || '♻️';
+    const conf = parseFloat(p.get('confidence') || '0');
+
+    /* ─── Bin config table ─── */
+    const BIN_STYLES = {
+      'blue bin':   { bg:'#1d4ed8', lid:'#1e40af', glow:'#3b82f6', icon:'♻️', tip:'Recyclable materials' },
+      'green bin':  { bg:'#15803d', lid:'#166534', glow:'#22c55e', icon:'🌿', tip:'Food & organic waste' },
+      'black bin':  { bg:'#1f2937', lid:'#111827', glow:'#4b5563', icon:'🗑️', tip:'General / non-recyclable' },
+      'red bin':    { bg:'#b91c1c', lid:'#991b1b', glow:'#ef4444', icon:'⚠️', tip:'Hazardous / e-waste' },
+      'yellow bin': { bg:'#a16207', lid:'#854d0e', glow:'#eab308', icon:'🟡', tip:'Metal / aluminum cans' },
+      'white bin':  { bg:'#475569', lid:'#334155', glow:'#94a3b8', icon:'🫙', tip:'Glass items' },
+    };
+
+    // Match bin name to style
+    const binKey   = Object.keys(BIN_STYLES).find(k => bin.toLowerCase().includes(k.split(' ')[0])) || 'black bin';
+    const binStyle = BIN_STYLES[binKey] || BIN_STYLES['black bin'];
+
+    /* ─── Apply to page ─── */
+    document.getElementById('wasteEmoji').textContent   = emoji;
+    document.getElementById('wasteTypeName').textContent = type.charAt(0).toUpperCase() + type.slice(1);
+    document.getElementById('binName').textContent       = bin;
+    document.getElementById('binInstruction').textContent = binStyle.tip + ' — find the ' + bin;
+    document.getElementById('confPct').textContent       = conf.toFixed(1) + '%';
+    document.getElementById('confPct').style.color       = color;
+    document.getElementById('binBodyIcon').textContent   = binStyle.icon;
+
+    // Bin colors
+    document.getElementById('binBody').style.background = binStyle.bg;
+    document.getElementById('binBody').style.boxShadow  = `0 16px 50px ${binStyle.glow}55`;
+    document.getElementById('binLid').style.background  = binStyle.lid;
+    document.getElementById('binGlow').style.background = binStyle.glow;
+
+    // Card shimmer border
+    document.getElementById('resultCard').style.setProperty('--c1', color);
+    document.getElementById('resultCard').style.setProperty('--c2', binStyle.bg);
+
+    // Confidence bar
+    document.getElementById('confBar').style.background = `linear-gradient(90deg, ${binStyle.bg}, ${color})`;
+    setTimeout(() => {
+      document.getElementById('confBar').style.width = Math.min(conf, 100) + '%';
+    }, 200);
+
+    /* ─── Gallery Upload ─── */
+    const galBtn       = document.getElementById('galBtn');
+    const galleryInput = document.getElementById('galleryInput');
+
+    galBtn.addEventListener('click', () => galleryInput.click());
+
+    galleryInput.addEventListener('change', async () => {
+      const file = galleryInput.files[0];
+      if (!file) return;
+      galBtn.textContent = '⏳ Analysing…';
+      galBtn.disabled = true;
+
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const base64 = e.target.result.split(',')[1];
+        try {
+          const res = await fetch('https://wastewise-backend-jwtk.onrender.com/predict', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: base64 })
+          });
+          const d = await res.json();
+          const params = new URLSearchParams({ type: d.waste_type, bin: d.bin, color: d.color, emoji: d.emoji, confidence: d.confidence });
+          window.location.href = 'index.html?' + params.toString();
+        } catch {
+          alert('Could not reach AI backend. Make sure api.py is running.');
+          galBtn.textContent = '🖼️ Upload Photo';
+          galBtn.disabled = false;
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,2522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>WasteWise — Smart Waste Scanner</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&family=Caveat:wght@600&display=swap" rel="stylesheet"/>
+  <style>
+
+    /* === PAGE VISIBILITY === */
+    .ww-page { display: none; }
+    .ww-page.ww-active { display: block; }
+    
+    /* When scanner or result is active, hide home-only fixed elements */
+    body.page-scanner .leaves-bg,
+    body.page-result .leaves-bg { display: none; }
+    
+    /* Background slideshow only visible on scanner/result pages */
+    .bg-slideshow, .bg-overlay { display: none; }
+    body.page-scanner .bg-slideshow,
+    body.page-scanner .bg-overlay,
+    body.page-result .bg-slideshow,
+    body.page-result .bg-overlay { display: block; }
+    
+    /* Dark body for scanner/result */
+    body.page-scanner,
+    body.page-result { background: #060f08; }
+    
+    /* Override home nav styles for scanner/result */
+    body.page-scanner > nav,
+    body.page-result > nav { display: none; }
+
+    /* ===== HOME PAGE STYLES ===== */
+
+    :root {
+      --bg: #f0f7f1;
+      --white: #ffffff;
+      --green: #1b8a4c;
+      --green2: #27ae60;
+      --green3: #52d68a;
+      --green-pale: #e0f5ea;
+      --green-glow: rgba(39, 174, 96, 0.25);
+      --text: #132b1e;
+      --muted: #5a7a65;
+      --border: #c8e6d0;
+      --amber: #f39c12;
+      --sky: #2980b9;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Outfit', sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* ─── FLOATING LEAVES background ─── */
+    .leaves-bg {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .leaf {
+      position: absolute;
+      font-size: 1.4rem;
+      opacity: 0.13;
+      animation: leafFall linear infinite;
+    }
+
+    @keyframes leafFall {
+      0% {
+        transform: translateY(-60px) rotate(0deg);
+        opacity: 0;
+      }
+
+      10% {
+        opacity: 0.13;
+      }
+
+      90% {
+        opacity: 0.13;
+      }
+
+      100% {
+        transform: translateY(110vh) rotate(360deg);
+        opacity: 0;
+      }
+    }
+
+    /* ─── NAV ─── */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 3rem;
+      background: rgba(240, 247, 241, 0.88);
+      backdrop-filter: blur(18px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      font-size: 1.5rem;
+      font-weight: 900;
+      color: var(--green);
+      letter-spacing: -0.04em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .logo-icon {
+      width: 34px;
+      height: 34px;
+      background: var(--green);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      animation: spinY 6s linear infinite;
+    }
+
+    @keyframes spinY {
+
+      0%,
+      100% {
+        transform: rotateY(0deg);
+      }
+
+      50% {
+        transform: rotateY(180deg);
+      }
+    }
+
+    nav ul {
+      display: flex;
+      gap: 2rem;
+      list-style: none;
+    }
+
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: color 0.2s;
+    }
+
+    nav a:hover {
+      color: var(--green);
+    }
+
+    .nav-scan-btn {
+      background: var(--green) !important;
+      color: #fff !important;
+      padding: 0.5rem 1.4rem;
+      border-radius: 100px;
+      font-weight: 700 !important;
+      box-shadow: 0 4px 18px var(--green-glow);
+      transition: transform 0.2s, box-shadow 0.2s !important;
+    }
+
+    .nav-scan-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px var(--green-glow) !important;
+    }
+
+    /* ─── HERO ─── */
+    .hero {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      align-items: center;
+      gap: 4rem;
+      padding: 9rem 5rem 5rem;
+      position: relative;
+      z-index: 1;
+      max-width: 1300px;
+      margin: 0 auto;
+    }
+
+    .hero-left {
+      position: relative;
+    }
+
+    /* Animated badge */
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--green-pale);
+      border: 1.5px solid var(--border);
+      color: var(--green);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      padding: 0.38rem 1rem;
+      border-radius: 100px;
+      margin-bottom: 1.5rem;
+      animation: fadeSlideUp 0.7s ease both;
+    }
+
+    .badge-pulse {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green3);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(82, 214, 138, 0.6);
+      }
+
+      50% {
+        transform: scale(1.3);
+        box-shadow: 0 0 0 6px rgba(82, 214, 138, 0);
+      }
+    }
+
+    h1 {
+      font-size: clamp(2.6rem, 4.5vw, 4rem);
+      font-weight: 900;
+      line-height: 1.06;
+      letter-spacing: -0.04em;
+      margin-bottom: 1.4rem;
+      animation: fadeSlideUp 0.8s 0.1s ease both;
+    }
+
+    h1 .highlight {
+      color: var(--green);
+      position: relative;
+      display: inline-block;
+    }
+
+    h1 .highlight::after {
+      content: '';
+      position: absolute;
+      bottom: 2px;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--green3), var(--green));
+      border-radius: 2px;
+      opacity: 0.4;
+      animation: lineGrow 1s 0.9s ease both;
+      transform-origin: left;
+    }
+
+    @keyframes lineGrow {
+      from {
+        transform: scaleX(0);
+      }
+
+      to {
+        transform: scaleX(1);
+      }
+    }
+
+    .hero-desc {
+      color: var(--muted);
+      font-size: 1.05rem;
+      line-height: 1.75;
+      max-width: 460px;
+      margin-bottom: 2.5rem;
+      animation: fadeSlideUp 0.8s 0.2s ease both;
+    }
+
+    .hero-btns {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      animation: fadeSlideUp 0.8s 0.3s ease both;
+    }
+
+    .btn-scan {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: var(--green);
+      color: #fff;
+      font-weight: 800;
+      font-size: 1rem;
+      padding: 0.95rem 2.2rem;
+      border-radius: 100px;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 8px 30px var(--green-glow);
+      transition: transform 0.2s, box-shadow 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-scan::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(120deg, transparent 0%, rgba(255, 255, 255, 0.18) 50%, transparent 100%);
+      transform: translateX(-100%);
+      transition: transform 0.5s;
+    }
+
+    .btn-scan:hover::before {
+      transform: translateX(100%);
+    }
+
+    .btn-scan:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 16px 45px var(--green-glow);
+    }
+
+    .btn-learn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--white);
+      color: var(--green);
+      border: 2px solid var(--border);
+      font-weight: 700;
+      font-size: 0.95rem;
+      padding: 0.9rem 1.8rem;
+      border-radius: 100px;
+      text-decoration: none;
+      transition: border-color 0.2s, transform 0.2s, background 0.2s;
+    }
+
+    .btn-learn:hover {
+      border-color: var(--green);
+      background: var(--green-pale);
+      transform: translateY(-3px);
+    }
+
+    /* Floating stats pills */
+    .stat-pill {
+      position: absolute;
+      background: var(--white);
+      border-radius: 14px;
+      padding: 10px 16px;
+      box-shadow: 0 8px 28px rgba(27, 138, 76, 0.13);
+      border: 1px solid var(--border);
+      animation: floatAnim 4s ease-in-out infinite;
+    }
+
+    .stat-pill .sp-num {
+      font-size: 1.3rem;
+      font-weight: 900;
+      color: var(--green);
+      display: block;
+    }
+
+    .stat-pill .sp-label {
+      font-size: 0.65rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .sp1 {
+      bottom: -20px;
+      left: 0;
+      animation-delay: 0s;
+    }
+
+    .sp2 {
+      bottom: 60px;
+      right: -30px;
+      animation-delay: 1.2s;
+    }
+
+    @keyframes floatAnim {
+
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+
+      50% {
+        transform: translateY(-10px);
+      }
+    }
+
+    @keyframes fadeSlideUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* ─── SCANNER GRAPHIC ─── */
+    .hero-right {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      animation: fadeSlideUp 0.9s 0.35s ease both;
+      position: relative;
+    }
+
+    .scanner-wrap {
+      position: relative;
+      width: 340px;
+      height: 440px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Phone body */
+    .phone-body {
+      width: 220px;
+      height: 380px;
+      background: var(--white);
+      border-radius: 36px;
+      box-shadow:
+        0 40px 80px rgba(27, 138, 76, 0.2),
+        0 0 0 1px var(--border);
+      padding: 12px;
+      position: relative;
+      z-index: 3;
+    }
+
+    .phone-inner {
+      width: 100%;
+      height: 100%;
+      background: #0d1f14;
+      border-radius: 26px;
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Camera viewfinder */
+    .viewfinder {
+      width: 140px;
+      height: 140px;
+      position: relative;
+    }
+
+    .vf-corner {
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      border-color: var(--green3);
+      border-style: solid;
+      animation: cornerPulse 2s ease-in-out infinite;
+    }
+
+    .vf-corner.tl {
+      top: 0;
+      left: 0;
+      border-width: 3px 0 0 3px;
+      border-radius: 4px 0 0 0;
+    }
+
+    .vf-corner.tr {
+      top: 0;
+      right: 0;
+      border-width: 3px 3px 0 0;
+      border-radius: 0 4px 0 0;
+    }
+
+    .vf-corner.bl {
+      bottom: 0;
+      left: 0;
+      border-width: 0 0 3px 3px;
+      border-radius: 0 0 0 4px;
+    }
+
+    .vf-corner.br {
+      bottom: 0;
+      right: 0;
+      border-width: 0 3px 3px 0;
+      border-radius: 0 0 4px 0;
+    }
+
+    @keyframes cornerPulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.4;
+      }
+    }
+
+    /* Scan line */
+    .scan-line {
+      position: absolute;
+      left: 6px;
+      right: 6px;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--green3), var(--green3), transparent);
+      top: 0;
+      animation: scanMove 2.2s ease-in-out infinite;
+      box-shadow: 0 0 10px var(--green3), 0 0 20px rgba(82, 214, 138, 0.4);
+    }
+
+    @keyframes scanMove {
+      0% {
+        top: 6px;
+        opacity: 0;
+      }
+
+      10% {
+        opacity: 1;
+      }
+
+      90% {
+        opacity: 1;
+      }
+
+      100% {
+        top: calc(100% - 8px);
+        opacity: 0;
+      }
+    }
+
+    /* Garbage emoji in viewfinder */
+    .vf-item {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 2.6rem;
+      animation: itemCycle 6s ease-in-out infinite;
+    }
+
+    @keyframes itemCycle {
+
+      0%,
+      18% {
+        content: '';
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+
+      20%,
+      22% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.5);
+      }
+
+      24%,
+      42% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+
+      44%,
+      46% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.5);
+      }
+
+      48%,
+      66% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+
+      68%,
+      70% {
+        opacity: 0;
+      }
+
+      72%,
+      100% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+    }
+
+    /* AI result popup inside phone */
+    .phone-result {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(13, 31, 20, 0.95);
+      border-top: 1px solid rgba(82, 214, 138, 0.3);
+      padding: 12px 14px;
+      animation: resultSlide 6s ease-in-out infinite;
+    }
+
+    @keyframes resultSlide {
+
+      0%,
+      10% {
+        transform: translateY(0);
+      }
+
+      20%,
+      80% {
+        transform: translateY(0);
+      }
+
+      85%,
+      100% {
+        transform: translateY(0);
+      }
+    }
+
+    .result-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .result-badge {
+      background: var(--green);
+      color: #fff;
+      font-size: 0.6rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      padding: 2px 7px;
+      border-radius: 100px;
+      text-transform: uppercase;
+    }
+
+    .result-label {
+      font-size: 0.68rem;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .result-bin-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .bin-tag {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(82, 214, 138, 0.15);
+      border: 1px solid rgba(82, 214, 138, 0.3);
+      border-radius: 8px;
+      padding: 4px 8px;
+      font-size: 0.65rem;
+      color: var(--green3);
+      font-weight: 700;
+    }
+
+    .result-accuracy {
+      margin-left: auto;
+      font-size: 0.6rem;
+      color: var(--green3);
+      font-weight: 700;
+    }
+
+    /* Orbiting icons around phone */
+    .orbit-ring {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 320px;
+      height: 320px;
+      margin-top: -160px;
+      margin-left: -160px;
+      border: 1.5px dashed rgba(27, 138, 76, 0.18);
+      border-radius: 50%;
+      animation: orbitSpin 18s linear infinite;
+      z-index: 2;
+    }
+
+    @keyframes orbitSpin {
+      from {
+        transform: rotate(0deg);
+      }
+
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .orbit-icon {
+      position: absolute;
+      width: 42px;
+      height: 42px;
+      background: var(--white);
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(27, 138, 76, 0.15);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      animation: orbitCounter 18s linear infinite;
+      /* counter-rotate so icons stay upright */
+    }
+
+    @keyframes orbitCounter {
+      from {
+        transform: rotate(0deg);
+      }
+
+      to {
+        transform: rotate(-360deg);
+      }
+    }
+
+    .oi1 {
+      top: -21px;
+      left: calc(50% - 21px);
+    }
+
+    .oi2 {
+      right: -21px;
+      top: calc(50% - 21px);
+    }
+
+    .oi3 {
+      bottom: -21px;
+      left: calc(50% - 21px);
+    }
+
+    .oi4 {
+      left: -21px;
+      top: calc(50% - 21px);
+    }
+
+    /* Glow behind phone */
+    .phone-glow {
+      position: absolute;
+      width: 260px;
+      height: 260px;
+      background: radial-gradient(circle, rgba(82, 214, 138, 0.22) 0%, transparent 70%);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      z-index: 1;
+      animation: glowBreath 3s ease-in-out infinite;
+    }
+
+    @keyframes glowBreath {
+
+      0%,
+      100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0.8;
+      }
+
+      50% {
+        transform: translate(-50%, -50%) scale(1.15);
+        opacity: 1;
+      }
+    }
+
+    /* ─── STATS BAR ─── */
+    .stats-bar {
+      background: var(--green);
+      padding: 1.8rem 5rem;
+      position: relative;
+      z-index: 1;
+      overflow: hidden;
+    }
+
+    .stats-bar::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+
+    .stats-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 2rem;
+      position: relative;
+    }
+
+    .stat-item {
+      text-align: center;
+    }
+
+    .stat-num {
+      font-size: 2rem;
+      font-weight: 900;
+      color: #fff;
+      display: block;
+      line-height: 1;
+      margin-bottom: 0.3rem;
+    }
+
+    .stat-label {
+      font-size: 0.78rem;
+      color: rgba(255, 255, 255, 0.7);
+      font-weight: 500;
+    }
+
+    /* ─── HOW TO SCAN ─── */
+    #howto {
+      padding: 6rem 5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .section-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .section-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.74rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: 0.8rem;
+    }
+
+    .section-tag::before {
+      content: '';
+      width: 22px;
+      height: 2.5px;
+      background: var(--green3);
+      border-radius: 2px;
+    }
+
+    h2 {
+      font-size: clamp(1.9rem, 3vw, 2.7rem);
+      font-weight: 900;
+      letter-spacing: -0.035em;
+      line-height: 1.1;
+      margin-bottom: 0.9rem;
+      color: var(--text);
+    }
+
+    .section-desc {
+      color: var(--muted);
+      font-size: 0.97rem;
+      line-height: 1.75;
+      max-width: 500px;
+      margin-bottom: 3.5rem;
+    }
+
+    .steps-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2rem;
+    }
+
+    .step-card {
+      background: var(--white);
+      border-radius: 22px;
+      border: 1.5px solid var(--border);
+      padding: 2rem;
+      transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .step-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--green3), var(--green));
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.4s;
+    }
+
+    .step-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 20px 50px rgba(27, 138, 76, 0.13);
+      border-color: var(--green3);
+    }
+
+    .step-card:hover::before {
+      transform: scaleX(1);
+    }
+
+    .step-num-big {
+      font-size: 4rem;
+      font-weight: 900;
+      color: var(--green-pale);
+      line-height: 1;
+      margin-bottom: 0.5rem;
+      font-family: 'Caveat', cursive;
+    }
+
+    .step-icon-big {
+      font-size: 2.4rem;
+      display: block;
+      margin-bottom: 1rem;
+    }
+
+    .step-card h3 {
+      font-size: 1.1rem;
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+      color: var(--text);
+    }
+
+    .step-card p {
+      font-size: 0.85rem;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    /* ─── BIN CATEGORIES ─── */
+    #bins {
+      padding: 5rem 5rem;
+      background: var(--white);
+      position: relative;
+      z-index: 1;
+    }
+
+    .bins-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 1.2rem;
+    }
+
+    .bin-card {
+      border-radius: 20px;
+      padding: 1.6rem 1rem 1.4rem;
+      text-align: center;
+      border: 1.5px solid transparent;
+      transition: transform 0.3s, box-shadow 0.3s;
+      cursor: default;
+    }
+
+    .bin-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.1);
+    }
+
+    .bin-emoji {
+      font-size: 2.5rem;
+      display: block;
+      margin-bottom: 0.7rem;
+    }
+
+    .bin-card h4 {
+      font-size: 0.88rem;
+      font-weight: 800;
+      margin-bottom: 0.3rem;
+    }
+
+    .bin-card p {
+      font-size: 0.72rem;
+      line-height: 1.55;
+    }
+
+    .bin-green {
+      background: #e8faf0;
+      border-color: #a8e6c0;
+    }
+
+    .bin-green h4 {
+      color: #1b8a4c;
+    }
+
+    .bin-green p {
+      color: #3a7a55;
+    }
+
+    .bin-blue {
+      background: #e8f4fd;
+      border-color: #a8d4ef;
+    }
+
+    .bin-blue h4 {
+      color: #2176ae;
+    }
+
+    .bin-blue p {
+      color: #3a6e8a;
+    }
+
+    .bin-yellow {
+      background: #fef9e7;
+      border-color: #f7dc6f;
+    }
+
+    .bin-yellow h4 {
+      color: #b7950b;
+    }
+
+    .bin-yellow p {
+      color: #8a7033;
+    }
+
+    .bin-red {
+      background: #fdedec;
+      border-color: #f1948a;
+    }
+
+    .bin-red h4 {
+      color: #c0392b;
+    }
+
+    .bin-red p {
+      color: #8a3830;
+    }
+
+    .bin-black {
+      background: #f4f4f4;
+      border-color: #c0c0c0;
+    }
+
+    .bin-black h4 {
+      color: #2c2c2c;
+    }
+
+    .bin-black p {
+      color: #5a5a5a;
+    }
+
+    /* ─── CTA SCAN ─── */
+    .cta-scan {
+      padding: 6rem 5rem;
+      background: linear-gradient(135deg, #0d3d22 0%, #1b8a4c 60%, #27ae60 100%);
+      position: relative;
+      overflow: hidden;
+      z-index: 1;
+    }
+
+    .cta-scan-bg {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .cta-circle {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .cc1 {
+      width: 500px;
+      height: 500px;
+      top: -180px;
+      right: -80px;
+    }
+
+    .cc2 {
+      width: 300px;
+      height: 300px;
+      bottom: -100px;
+      left: -60px;
+    }
+
+    .cc3 {
+      width: 180px;
+      height: 180px;
+      top: 40%;
+      right: 25%;
+    }
+
+    /* Animated scan-line across CTA */
+    .cta-scanline {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent 0%, rgba(82, 214, 138, 0.6) 50%, transparent 100%);
+      animation: ctaScanMove 4s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    @keyframes ctaScanMove {
+      0% {
+        top: 0%;
+        opacity: 0;
+      }
+
+      5% {
+        opacity: 1;
+      }
+
+      95% {
+        opacity: 1;
+      }
+
+      100% {
+        top: 100%;
+        opacity: 0;
+      }
+    }
+
+    .cta-inner-scan {
+      max-width: 700px;
+      margin: 0 auto;
+      text-align: center;
+      position: relative;
+    }
+
+    .cta-inner-scan .section-tag {
+      justify-content: center;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .cta-inner-scan .section-tag::before {
+      background: rgba(255, 255, 255, 0.4);
+    }
+
+    .cta-inner-scan h2 {
+      color: #fff;
+      font-size: clamp(2rem, 4vw, 3rem);
+      margin-bottom: 1rem;
+    }
+
+    .cta-inner-scan p {
+      color: rgba(255, 255, 255, 0.75);
+      font-size: 1rem;
+      line-height: 1.8;
+      margin-bottom: 2.5rem;
+    }
+
+    /* Big animated scan button */
+    .big-scan-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.8rem;
+      background: #fff;
+      color: var(--green);
+      font-weight: 900;
+      font-size: 1.15rem;
+      padding: 1.1rem 2.8rem;
+      border-radius: 100px;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+      transition: transform 0.2s, box-shadow 0.2s;
+      position: relative;
+    }
+
+    .big-scan-btn:hover {
+      transform: translateY(-4px) scale(1.03);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .btn-camera-icon {
+      font-size: 1.4rem;
+      animation: cameraWiggle 2s ease-in-out infinite;
+    }
+
+    @keyframes cameraWiggle {
+
+      0%,
+      100% {
+        transform: rotate(0);
+      }
+
+      25% {
+        transform: rotate(-10deg);
+      }
+
+      75% {
+        transform: rotate(10deg);
+      }
+    }
+
+    /* Ripple ring around scan button */
+    .scan-btn-wrap {
+      position: relative;
+      display: inline-block;
+    }
+
+    .ripple {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 100%;
+      height: 100%;
+      transform: translate(-50%, -50%);
+      border-radius: 100px;
+      border: 2px solid rgba(255, 255, 255, 0.4);
+      animation: rippleOut 2s ease-out infinite;
+    }
+
+    .ripple:nth-child(2) {
+      animation-delay: 0.6s;
+    }
+
+    .ripple:nth-child(3) {
+      animation-delay: 1.2s;
+    }
+
+    @keyframes rippleOut {
+      0% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+      }
+
+      100% {
+        transform: translate(-50%, -50%) scale(1.9);
+        opacity: 0;
+      }
+    }
+
+    /* ─── ENCOURAGING COUNTER SECTION ─── */
+    .counters-section {
+      padding: 4rem 5rem;
+      background: var(--bg);
+      position: relative;
+      z-index: 1;
+    }
+
+    .counters-grid {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.5rem;
+    }
+
+    .counter-card {
+      background: var(--white);
+      border-radius: 20px;
+      border: 1.5px solid var(--border);
+      padding: 1.8rem 1.4rem;
+      text-align: center;
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .counter-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 14px 35px rgba(27, 138, 76, 0.13);
+    }
+
+    .counter-icon {
+      font-size: 2rem;
+      display: block;
+      margin-bottom: 0.8rem;
+    }
+
+    .counter-num {
+      font-size: 2.2rem;
+      font-weight: 900;
+      color: var(--green);
+      display: block;
+      margin-bottom: 0.3rem;
+      line-height: 1;
+    }
+
+    .counter-label {
+      font-size: 0.8rem;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    /* ─── FOOTER ─── */
+    footer {
+      background: #0d1f14;
+      padding: 2.5rem 5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .footer-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .footer-logo {
+      font-size: 1.3rem;
+      font-weight: 900;
+      color: var(--green3);
+    }
+
+    .footer-copy {
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.35);
+      margin-top: 4px;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 2rem;
+    }
+
+    .footer-links a {
+      color: rgba(255, 255, 255, 0.45);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .footer-links a:hover {
+      color: var(--green3);
+    }
+
+    /* ─── REVEAL ─── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 960px) {
+      .hero {
+        grid-template-columns: 1fr;
+        padding: 8rem 2rem 4rem;
+        text-align: center;
+        gap: 3rem;
+      }
+
+      .hero-desc {
+        margin: 0 auto 2.5rem;
+      }
+
+      .hero-btns {
+        justify-content: center;
+      }
+
+      nav {
+        padding: 1rem 1.5rem;
+      }
+
+      nav ul {
+        display: none;
+      }
+
+      .steps-row,
+      .bins-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .counters-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .stats-inner {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      #howto,
+      #bins,
+      .cta-scan,
+      .counters-section {
+        padding: 4rem 2rem;
+      }
+    }
+
+    @media (max-width: 600px) {
+
+      .steps-row,
+      .bins-grid,
+      .counters-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  
+    /* ===== SCANNER PAGE STYLES (scoped) ===== */
+
+    
+    
+
+    
+    
+    
+    
+
+    
+    
+    
+    
+    
+
+    
+    
+    @keyframes pulse { 0%,100%{ box-shadow: 0 0 0 0 rgba(82,214,138,0.5); } 50%{ box-shadow: 0 0 0 6px rgba(82,214,138,0); } }
+
+    
+    
+    
+
+    .main-content { position: relative; z-index: 10; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6rem 1.5rem 8rem; }
+
+    .scanner-card { background: rgba(8,22,12,0.65); backdrop-filter: blur(22px); border: 1px solid rgba(82,214,138,0.25); border-radius: 28px; padding: 2rem; max-width: 520px; width: 100%; box-shadow: 0 30px 80px rgba(0,0,0,0.5); position: relative; overflow: hidden; }
+
+    .card-header { text-align: center; margin-bottom: 1.2rem; }
+    .card-header h1 { font-size: 1.9rem; font-weight: 900; color: #fff; letter-spacing: -0.04em; margin-bottom: 0.3rem; }
+    .card-header p { color: rgba(255,255,255,0.5); font-size: 0.85rem; line-height: 1.6; }
+
+    .camera-wrapper { position: relative; width: 100%; border-radius: 16px; overflow: hidden; background: #030e06; aspect-ratio: 4/3; border: 1.5px solid rgba(82,214,138,0.3); margin-bottom: 1rem; }
+    video { width: 100%; height: 100%; object-fit: cover; }
+
+    .scan-line-overlay { position: absolute; left: 8px; right: 8px; height: 2px; background: linear-gradient(90deg, transparent, #52d68a, #52d68a, transparent); top: 0; animation: scanMove 2.2s ease-in-out infinite; box-shadow: 0 0 12px #52d68a; pointer-events: none; }
+    @keyframes scanMove { 0%{top:6px;opacity:0} 10%{opacity:1} 90%{opacity:1} 100%{top:calc(100% - 8px);opacity:0} }
+
+    .vf-corner { position: absolute; width: 24px; height: 24px; border-color: #52d68a; border-style: solid; animation: cornerPulse 2s ease-in-out infinite; }
+    .vf-corner.tl { top:8px; left:8px;  border-width:3px 0 0 3px; border-radius:4px 0 0 0; }
+    .vf-corner.tr { top:8px; right:8px; border-width:3px 3px 0 0; border-radius:0 4px 0 0; }
+    .vf-corner.bl { bottom:8px; left:8px;  border-width:0 0 3px 3px; border-radius:0 0 0 4px; }
+    .vf-corner.br { bottom:8px; right:8px; border-width:0 3px 3px 0; border-radius:0 0 4px 0; }
+    @keyframes cornerPulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    .countdown-overlay { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); backdrop-filter: blur(2px); z-index: 5; }
+    .countdown-circle { width: 100px; height: 100px; border-radius: 50%; border: 4px solid #52d68a; display: flex; align-items: center; justify-content: center; font-size: 3rem; font-weight: 900; color: #fff; animation: circleGlow 1s ease-in-out infinite alternate; }
+    @keyframes circleGlow { from{box-shadow:0 0 20px rgba(82,214,138,0.4)} to{box-shadow:0 0 50px rgba(82,214,138,0.9)} }
+    .countdown-text { color: #52d68a; font-size: 0.85rem; font-weight: 700; margin-top: 0.8rem; letter-spacing: 0.05em; }
+
+    .flash-overlay { position: absolute; inset: 0; background: #fff; opacity: 0; z-index: 6; border-radius: 16px; pointer-events: none; }
+
+    .camera-placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: rgba(255,255,255,0.3); font-size: 0.9rem; }
+    .camera-placeholder .ph-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+
+    .action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    .btn-primary { background: #1b8a4c; color: #fff; border: none; padding: 0.95rem; font-size: 1rem; font-weight: 800; border-radius: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-family: 'Outfit', sans-serif; box-shadow: 0 8px 24px rgba(27,138,76,0.4); transition: transform 0.2s, box-shadow 0.2s; }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 14px 32px rgba(27,138,76,0.5); }
+    .btn-primary:disabled { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.3); box-shadow: none; cursor: not-allowed; transform: none; }
+    .btn-secondary { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.8); border: 1px solid rgba(255,255,255,0.18); padding: 0.95rem; font-size: 0.95rem; font-weight: 700; border-radius: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-family: 'Outfit', sans-serif; transition: background 0.2s, border-color 0.2s, transform 0.2s; }
+    .btn-secondary:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.35); transform: translateY(-2px); }
+
+    #analysingOverlay { position: absolute; inset: 0; border-radius: 28px; background: rgba(8,22,12,0.95); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 20; backdrop-filter: blur(8px); }
+    .ai-spinner { width: 64px; height: 64px; border: 3px solid rgba(82,214,138,0.15); border-top-color: #52d68a; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 1.2rem; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+    #analysingOverlay h3 { color: #fff; font-size: 1.3rem; font-weight: 800; margin-bottom: 0.3rem; }
+    #analysingOverlay p { color: rgba(255,255,255,0.45); font-size: 0.88rem; }
+    .ai-tag { margin-top: 1rem; background: rgba(82,214,138,0.15); border: 1px solid rgba(82,214,138,0.3); color: #52d68a; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em; padding: 0.3rem 0.9rem; border-radius: 100px; }
+
+    .status-pill { display: inline-flex; align-items: center; gap: 0.4rem; background: rgba(82,214,138,0.12); border: 1px solid rgba(82,214,138,0.3); color: #52d68a; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.07em; padding: 0.3rem 0.85rem; border-radius: 100px; margin-bottom: 0.75rem; }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #52d68a; animation: pulse 1.5s infinite; }
+
+    .error-bar { margin-top: 0.8rem; background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; font-size: 0.8rem; font-weight: 600; padding: 0.6rem 0.9rem; border-radius: 10px; display: none; text-align: center; }
+  
+
+    #ww-scanner nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 2.5rem;
+      background: rgba(8,22,12,0.6); backdrop-filter: blur(18px);
+      border-bottom: 1px solid rgba(82,214,138,0.15);
+    }
+    #ww-scanner .logo { font-size: 1.35rem; font-weight: 900; color: #fff; text-decoration: none; display: flex; align-items: center; gap: 0.5rem; }
+    #ww-scanner .logo-icon { background: #1b8a4c; border-radius: 9px; width: 33px; height: 33px; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+    #ww-scanner .bg-overlay { background: rgba(8,22,12,0.76); }
+    #ww-scanner .slide-dots { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%); z-index: 10; display: flex; gap: 0.45rem; }
+    #ww-scanner .dot { width: 7px; height: 7px; border-radius: 100px; background: rgba(255,255,255,0.3); transition: all 0.4s; cursor: pointer; }
+    #ww-scanner .dot.active { background: #52d68a; width: 22px; }
+    #ww-scanner .location-tag { position: fixed; bottom: 5.5rem; left: 2rem; z-index: 10; background: rgba(8,22,12,0.75); backdrop-filter: blur(10px); border: 1px solid rgba(82,214,138,0.25); border-radius: 12px; padding: 0.55rem 1rem; display: flex; align-items: center; gap: 0.5rem; color: #fff; font-size: 0.78rem; font-weight: 600; }
+
+    /* ===== RESULT PAGE STYLES (scoped) ===== */
+
+    
+    
+
+    /* ─── Slideshow Background ─── */
+    
+    
+    
+    
+
+    /* ─── Nav ─── */
+    
+    
+    
+
+    /* ─── Slide Dots ─── */
+    
+    
+    
+
+    /* ─── Main ─── */
+    .main {
+      position: relative; z-index: 10;
+      min-height: 100vh; width: 100%;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 6rem 1.5rem 5rem;
+    }
+
+    /* ─── CARD ─── */
+    .result-card {
+      background: rgba(4,12,6,0.75);
+      backdrop-filter: blur(28px);
+      border: 1.5px solid rgba(82,214,138,0.25);
+      border-radius: 32px;
+      padding: 2.5rem 2rem;
+      max-width: 480px; width: 100%;
+      box-shadow: 0 40px 100px rgba(0,0,0,0.6);
+      animation: slideUp 0.5s ease both;
+      position: relative; overflow: hidden;
+    }
+
+    /* top shimmer bar */
+    .result-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--c1,#52d68a), var(--c2,#1b8a4c), var(--c1,#52d68a));
+      background-size: 200% 100%;
+      animation: shimmer 2.5s linear infinite;
+    }
+    @keyframes shimmer { 0%{background-position:200% center} 100%{background-position:-200% center} }
+    @keyframes slideUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+
+    /* ─── Detected label ─── */
+    .scan-tag {
+      text-align: center;
+      font-size: 0.7rem; font-weight: 800;
+      letter-spacing: 0.15em; text-transform: uppercase;
+      color: rgba(255,255,255,0.4);
+      margin-bottom: 0.6rem;
+    }
+
+    /* ─── Waste emoji + type ─── */
+    .waste-hero {
+      text-align: center; margin-bottom: 1.8rem;
+    }
+    .waste-emoji {
+      font-size: 4rem; display: block; margin-bottom: 0.5rem;
+      animation: bounceIn 0.6s 0.15s ease both;
+    }
+    @keyframes bounceIn {
+      0%{transform:scale(0);opacity:0} 60%{transform:scale(1.2)} 80%{transform:scale(0.93)} 100%{transform:scale(1);opacity:1}
+    }
+    .waste-label {
+      font-size: 0.72rem; font-weight: 800; letter-spacing: 0.14em;
+      text-transform: uppercase; color: rgba(255,255,255,0.38);
+      margin-bottom: 0.3rem;
+    }
+    .waste-type {
+      font-size: 2.4rem; font-weight: 900; color: #fff;
+      letter-spacing: -0.04em; text-transform: capitalize;
+      line-height: 1;
+    }
+
+    /* ─── Divider ─── */
+    .divider {
+      height: 1px; background: rgba(255,255,255,0.07);
+      margin: 1.5rem 0;
+    }
+
+    /* ─── BIG BIN SECTION ─── */
+    .bin-section {
+      text-align: center; margin-bottom: 1.8rem;
+    }
+
+    .throw-label {
+      font-size: 0.78rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: rgba(255,255,255,0.38);
+      margin-bottom: 0.8rem;
+    }
+
+    /* The big animated bin */
+    .bin-visual {
+      position: relative;
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .bin-body {
+      width: 110px; height: 120px;
+      border-radius: 8px 8px 14px 14px;
+      position: relative;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 3.2rem;
+      box-shadow: 0 16px 50px rgba(0,0,0,0.4);
+      animation: floatBin 3s ease-in-out infinite;
+    }
+    @keyframes floatBin {
+      0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)}
+    }
+
+    /* Bin lid */
+    .bin-lid {
+      width: 124px; height: 18px;
+      border-radius: 6px;
+      margin-bottom: -3px;
+      position: relative;
+      z-index: 2;
+    }
+
+    /* Bin stripes */
+    .bin-body::after {
+      content: '';
+      position: absolute;
+      left: 30%; right: 30%;
+      top: 20%; bottom: 20%;
+      border-left: 3px solid rgba(255,255,255,0.18);
+      border-right: 3px solid rgba(255,255,255,0.18);
+    }
+
+    /* Glow ring under bin */
+    .bin-glow {
+      width: 80px; height: 18px;
+      border-radius: 50%;
+      margin-top: -4px;
+      filter: blur(8px);
+      opacity: 0.45;
+      animation: floatBin 3s ease-in-out infinite;
+    }
+
+    .bin-name {
+      font-size: 1.5rem; font-weight: 900; color: #fff;
+      letter-spacing: -0.03em; margin-top: 0.4rem;
+    }
+
+    .bin-instruction {
+      font-size: 0.82rem; color: rgba(255,255,255,0.45); margin-top: 0.25rem;
+    }
+
+    /* ─── Confidence ─── */
+    .conf-row {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 0.4rem;
+    }
+    .conf-label { font-size: 0.75rem; font-weight: 600; color: rgba(255,255,255,0.4); }
+    .conf-pct   { font-size: 0.75rem; font-weight: 900; }
+
+    .conf-bar-bg {
+      height: 6px; background: rgba(255,255,255,0.07);
+      border-radius: 100px; overflow: hidden; margin-bottom: 1.6rem;
+    }
+    .conf-bar-fill {
+      height: 100%; border-radius: 100px; width: 0%;
+      transition: width 1.2s ease-out;
+    }
+
+    /* ─── Points badge ─── */
+    .points-badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      background: rgba(234,179,8,0.12);
+      border: 1px solid rgba(234,179,8,0.3);
+      color: #facc15;
+      font-size: 0.8rem; font-weight: 800;
+      padding: 0.4rem 1rem; border-radius: 100px;
+      margin-bottom: 1.5rem;
+    }
+
+    /* ─── Action Buttons ─── */
+    
+    
+    
+
+    .btn-gallery {
+      background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.8);
+      border: 1px solid rgba(255,255,255,0.18);
+      padding: 1rem; font-size: 0.95rem; font-weight: 700;
+      border-radius: 14px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+      font-family: 'Outfit', sans-serif;
+      transition: background 0.2s, border-color 0.2s, transform 0.2s;
+    }
+    .btn-gallery:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.35); transform: translateY(-2px); }
+
+    #galleryInput { display: none; }
+
+    /* ─── Location tag ─── */
+    
+    
+    @keyframes pulse {
+      0%,100%{ box-shadow: 0 0 0 0 rgba(82,214,138,0.5); }
+      50%    { box-shadow: 0 0 0 5px rgba(82,214,138,0); }
+    }
+  
+
+    #ww-result nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 2.5rem;
+      background: rgba(4,12,6,0.65); backdrop-filter: blur(18px);
+      border-bottom: 1px solid rgba(82,214,138,0.12);
+    }
+    #ww-result .logo { font-size: 1.2rem; font-weight: 900; color: #fff; text-decoration: none; display: flex; align-items: center; gap: 0.5rem; }
+    #ww-result .logo-icon { background: #1b8a4c; border-radius: 9px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; }
+    #ww-result .bg-overlay { background: rgba(4, 12, 6, 0.85); }
+    #ww-result .slide-dots { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); z-index: 10; display: flex; gap: 0.4rem; }
+    #ww-result .dot { width: 7px; height: 7px; border-radius: 100px; background: rgba(255,255,255,0.25); transition: all 0.4s; cursor: pointer; }
+    #ww-result .dot.active { background: #52d68a; width: 20px; }
+    #ww-result .location-tag { position: fixed; bottom: 3.8rem; left: 1.5rem; z-index: 10; background: rgba(4,12,6,0.75); backdrop-filter: blur(10px); border: 1px solid rgba(82,214,138,0.22); border-radius: 12px; padding: 0.5rem 0.9rem; display: flex; align-items: center; gap: 0.4rem; color: #fff; font-size: 0.75rem; font-weight: 600; }
+    #ww-result .btn-scan { background: #1b8a4c; color: #fff; border: none; padding: 1rem; font-size: 0.95rem; font-weight: 800; border-radius: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-family: 'Outfit', sans-serif; box-shadow: 0 8px 24px rgba(27,138,76,0.4); transition: transform 0.2s, box-shadow 0.2s; text-decoration: none; }
+    #ww-result .btn-scan:hover { transform: translateY(-2px); box-shadow: 0 14px 32px rgba(27,138,76,0.5); }
+    #ww-result .action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+
+  </style>
+</head>
+<body class="page-home">
+
+<!-- ============================== HOME PAGE ============================== -->
+<div id="ww-home" class="ww-page ww-active">
+<!-- ANIMATED LEAF BACKGROUND -->
+  <div class="leaves-bg" id="leavesBg"></div>
+
+  <!-- NAV -->
+  <nav>
+    <div class="logo">
+      <div class="logo-icon">♻️</div>
+      WasteWise
+    </div>
+    <ul>
+      <li><a href="#howto">How It Works</a></li>
+      <li><a href="#bins">Bin Guide</a></li>
+      <li><a href="#cta">Scan Now</a></li>
+      <li><a href="#" onclick="showPage('scanner');return false;" class="nav-scan-btn">📷 Open Scanner</a></li>
+    </ul>
+  </nav>
+
+  <!-- ═══════════════ HERO ═══════════════ -->
+  <section class="hero">
+    <!-- LEFT -->
+    <div class="hero-left">
+      <div class="hero-badge">
+        <span class="badge-pulse"></span>
+        AI-Powered · Smart Waste · India
+      </div>
+
+      <h1>Scan your waste.<br /><span class="highlight">Save the planet.</span></h1>
+
+      <p class="hero-desc">
+        Point your camera at any waste item — our AI instantly tells you which bin it belongs to.
+        Make every throw count and earn Green Points for a cleaner city! 🌿
+      </p>
+
+      <div class="hero-btns">
+        <a href="#" onclick="showPage('scanner');return false;" class="btn-scan">
+          <span class="btn-camera-icon">📷</span>
+          Scan Waste Now
+        </a>
+        <a href="#howto" class="btn-learn">How it works ↓</a>
+      </div>
+
+      <!-- Floating stat pills -->
+      <div class="stat-pill sp1">
+        <span class="sp-num">94%</span>
+        <span class="sp-label">AI Accuracy</span>
+      </div>
+      <div class="stat-pill sp2">
+        <span class="sp-num">−62%</span>
+        <span class="sp-label">Less Landfill</span>
+      </div>
+    </div>
+
+    <!-- RIGHT — SCANNER GRAPHIC -->
+    <div class="hero-right">
+      <div class="scanner-wrap">
+
+        <!-- Orbit ring -->
+        <div class="orbit-ring">
+          <div class="orbit-icon oi1">🍌</div>
+          <div class="orbit-icon oi2">📦</div>
+          <div class="orbit-icon oi3">🥤</div>
+          <div class="orbit-icon oi4">🔋</div>
+        </div>
+
+        <!-- Glow -->
+        <div class="phone-glow"></div>
+
+        <!-- Phone -->
+        <div class="phone-body">
+          <div class="phone-inner">
+
+            <!-- Viewfinder -->
+            <div class="viewfinder">
+              <div class="vf-corner tl"></div>
+              <div class="vf-corner tr"></div>
+              <div class="vf-corner bl"></div>
+              <div class="vf-corner br"></div>
+              <div class="scan-line"></div>
+              <!-- Cycling waste item -->
+              <div class="vf-item" id="vfItem">🍌</div>
+            </div>
+
+            <!-- Result strip -->
+            <div class="phone-result">
+              <div class="result-row">
+                <div class="result-badge">AI Result</div>
+                <span class="result-label" id="resultLabel">Banana Peel detected</span>
+              </div>
+              <div class="result-bin-row">
+                <div class="bin-tag" id="binTag">🟢 Green Bin — Organic</div>
+                <span class="result-accuracy">94% sure</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ STATS BAR ═══════════════ -->
+  <div class="stats-bar">
+    <div class="stats-inner">
+      <div class="stat-item">
+        <span class="stat-num">94%</span>
+        <span class="stat-label">AI Identification Accuracy</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-num">200+</span>
+        <span class="stat-label">Waste Categories Recognized</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-num">−62%</span>
+        <span class="stat-label">Landfill Waste Reduced</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-num">4.8★</span>
+        <span class="stat-label">Citizen App Rating</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ HOW TO SCAN ═══════════════ -->
+  <section id="howto">
+    <div class="section-inner">
+      <div class="section-tag">How It Works</div>
+      <h2>Three steps to zero confusion</h2>
+      <p class="section-desc">Anyone can use WasteWise — no training needed. Just point, scan, and throw right!</p>
+      <div class="steps-row">
+        <div class="step-card reveal">
+          <div class="step-num-big">01</div>
+          <span class="step-icon-big">📷</span>
+          <h3>Point Your Camera</h3>
+          <p>Open the WasteWise scanner and point your phone camera at the waste item you want to dispose of.</p>
+        </div>
+        <div class="step-card reveal">
+          <div class="step-num-big">02</div>
+          <span class="step-icon-big">🤖</span>
+          <h3>AI Identifies It</h3>
+          <p>Our AI analyses the item in real time with 94% accuracy and instantly classifies it into the correct waste
+            category.</p>
+        </div>
+        <div class="step-card reveal">
+          <div class="step-num-big">03</div>
+          <span class="step-icon-big">🗑️</span>
+          <h3>Throw in Right Bin</h3>
+          <p>The next page shows exactly which coloured bin to use — plus you earn Green Points for every correct scan!
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ BIN CATEGORIES ═══════════════ -->
+  <section id="bins">
+    <div class="section-inner">
+      <div class="section-tag">Bin Guide</div>
+      <h2>Which bin does it go in?</h2>
+      <p class="section-desc">Our scanner detects the right category automatically — but here's a quick visual guide.
+      </p>
+      <div class="bins-grid">
+        <div class="bin-card bin-green reveal">
+          <span class="bin-emoji">🟢</span>
+          <h4>Green Bin</h4>
+          <p>Wet / Organic waste — food scraps, vegetable peels, garden waste</p>
+        </div>
+        <div class="bin-card bin-blue reveal">
+          <span class="bin-emoji">🔵</span>
+          <h4>Blue Bin</h4>
+          <p>Dry recyclables — paper, cardboard, plastic bottles, glass, metal</p>
+        </div>
+        <div class="bin-card bin-yellow reveal">
+          <span class="bin-emoji">🟡</span>
+          <h4>Yellow Bin</h4>
+          <p>Sanitary & domestic hazardous — diapers, sanitary pads, bandages</p>
+        </div>
+        <div class="bin-card bin-red reveal">
+          <span class="bin-emoji">🔴</span>
+          <h4>Red Bin</h4>
+          <p>E-waste & hazardous — batteries, bulbs, chemicals, medical waste</p>
+        </div>
+        <div class="bin-card bin-black reveal">
+          <span class="bin-emoji">⚫</span>
+          <h4>Black Bin</h4>
+          <p>Non-recyclable residuals — contaminated or mixed waste that can't be sorted</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ ENCOURAGING COUNTERS ═══════════════ -->
+  <div class="counters-section">
+    <div class="counters-grid">
+      <div class="counter-card reveal">
+        <span class="counter-icon">🏆</span>
+        <span class="counter-num" data-target="14892">0</span>
+        <span class="counter-label">Scans Done Today</span>
+      </div>
+      <div class="counter-card reveal">
+        <span class="counter-icon">🌱</span>
+        <span class="counter-num" data-target="2400" data-suffix="kg">0</span>
+        <span class="counter-label">CO₂ Saved This Week</span>
+      </div>
+      <div class="counter-card reveal">
+        <span class="counter-icon">♻️</span>
+        <span class="counter-num" data-target="340" data-prefix="+">0</span>
+        <span class="counter-label">% More Recycling</span>
+      </div>
+      <div class="counter-card reveal">
+        <span class="counter-icon">😊</span>
+        <span class="counter-num" data-target="48" data-suffix="k">0</span>
+        <span class="counter-label">Happy Citizens</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ BIG CTA ═══════════════ -->
+  <section class="cta-scan" id="cta">
+    <div class="cta-scan-bg">
+      <div class="cta-circle cc1"></div>
+      <div class="cta-circle cc2"></div>
+      <div class="cta-circle cc3"></div>
+      <div class="cta-scanline"></div>
+    </div>
+    <div class="cta-inner-scan reveal">
+      <div class="section-tag">Ready?</div>
+      <h2>Start scanning.<br />Start saving the earth. 🌍</h2>
+      <p>Every correct throw makes a difference. Scan your waste now, find out which bin it belongs to, and earn Green
+        Points for being an eco-hero!</p>
+      <div class="scan-btn-wrap">
+        <div class="ripple"></div>
+        <div class="ripple"></div>
+        <div class="ripple"></div>
+        <a href="#" onclick="showPage('scanner');return false;" class="big-scan-btn">
+          <span class="btn-camera-icon">📷</span>
+          Open Scanner Now
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ FOOTER ═══════════════ -->
+  <footer>
+    <div class="footer-inner">
+      <div>
+        <div class="footer-logo">♻️ WasteWise</div>
+        <div class="footer-copy">Smart Urban Waste Management · Making India Cleaner</div>
+      </div>
+      <div class="footer-links">
+        <a href="#howto">How It Works</a>
+        <a href="#bins">Bin Guide</a>
+        <a href="#" onclick="showPage('scanner');return false;">Scanner</a>
+      </div>
+    </div>
+  </footer>
+
+  
+</div>
+
+<!-- ============================== SCANNER PAGE ============================== -->
+<div id="ww-scanner" class="ww-page">
+<div class="bg-slideshow">
+    <div class="bg-slide active" style="background-image:url('indore1.jpg')"></div>
+    <div class="bg-slide" style="background-image:url('indore2.jpg')"></div>
+    <div class="bg-slide" style="background-image:url('indore3.jpg')"></div>
+    <div class="bg-slide" style="background-image:url('indore4.jpg')"></div>
+    <div class="bg-slide" style="background-image:url('indore5.jpg')"></div>
+  </div>
+  <div class="bg-overlay"></div>
+
+  <nav>
+    <a href="#" onclick="showPage('home');return false;" class="logo"><div class="logo-icon">♻️</div>WasteWise</a>
+    <a href="#" onclick="showPage('home');return false;" class="back-btn">← Home</a>
+  </nav>
+
+  <div class="location-tag">
+    <div class="location-dot"></div>
+    <span id="locationLabel">Rajwada Palace, Indore</span>
+  </div>
+  <div class="slide-dots" id="scannerSlideDots"></div>
+
+  <div class="main-content">
+    <div class="scanner-card">
+
+      <!-- AI overlay -->
+      <div id="analysingOverlay">
+        <div class="ai-spinner"></div>
+        <h3>AI Analysing…</h3>
+        <p>Identifying your waste item</p>
+        <div class="ai-tag">WASTEWISE AI</div>
+      </div>
+
+      <div class="card-header">
+        <h1>📸 Identify Waste</h1>
+        <p>Point your camera at the garbage and tap Capture. AI will tell you which bin.</p>
+      </div>
+
+      <div style="text-align:center; margin-bottom:0.75rem;">
+        <div class="status-pill"><div class="status-dot"></div><span id="statusText">Starting camera…</span></div>
+      </div>
+
+      <!-- Live camera feed -->
+      <div class="camera-wrapper">
+        <video id="videoEl" autoplay playsinline muted></video>
+        <div class="camera-placeholder" id="camPlaceholder">
+          <span class="ph-icon">📷</span><span id="camMsg">Starting camera…</span>
+        </div>
+        <div class="vf-corner tl"></div>
+        <div class="vf-corner tr"></div>
+        <div class="vf-corner bl"></div>
+        <div class="vf-corner br"></div>
+        <div class="scan-line-overlay"></div>
+        <div class="flash-overlay" id="flashEl"></div>
+      </div>
+
+      <div class="action-row">
+        <button class="btn-primary" id="captureBtn" disabled>📷 Capture</button>
+        <button class="btn-secondary" id="uploadPhotoBtn">🖼️ Upload Photo</button>
+      </div>
+      <div class="error-bar" id="errorBar"></div>
+
+    </div>
+  </div>
+
+  <!-- Hidden elements -->
+  <input type="file" id="galleryInput" accept="image/*" style="display:none;">
+  <canvas id="canvasEl" style="display:none;"></canvas>
+
+  
+</div>
+
+<!-- ============================== RESULT PAGE ============================== -->
+<div id="ww-result" class="ww-page">
+<!-- Slideshow -->
+  <div class="bg-slideshow">
+    <div class="bg-slide active" style="background-image:url('indore1.jpg')"></div>
+    <div class="bg-slide" style="background-image:url('indore2.jpg')"></div>
+    <div class="bg-slide" style="background-image:url('indore3.jpg')"></div>
+    <div class="bg-slide" style="background-image:url('indore4.jpg')"></div>
+    <div class="bg-slide" style="background-image:url('indore5.jpg')"></div>
+  </div>
+  <div class="bg-overlay"></div>
+
+  <!-- Nav -->
+  <nav>
+    <a href="#" onclick="showPage('home');return false;" class="logo"><div class="logo-icon">♻️</div>WasteWise</a>
+  </nav>
+
+  <!-- Slide Dots -->
+  <div class="slide-dots" id="resultSlideDots"></div>
+
+  <!-- Location tag -->
+  <div class="location-tag">
+    <div class="loc-dot"></div>
+    <span id="locLabel">Rajwada Palace, Indore</span>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="result-card" id="resultCard">
+
+      <!-- Scanned object -->
+      <div class="scan-tag">🔍 AI Scan Result</div>
+      <div class="waste-hero">
+        <span class="waste-emoji" id="wasteEmoji">♻️</span>
+        <div class="waste-label">Detected Garbage Type</div>
+        <div class="waste-type" id="wasteTypeName">—</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Bin info -->
+      <div class="bin-section">
+        <div class="throw-label">Throw it in</div>
+
+        <div class="bin-visual">
+          <div class="bin-lid" id="binLid"></div>
+          <div class="bin-body" id="binBody"> <span id="binBodyIcon">🗑️</span> </div>
+          <div class="bin-glow" id="binGlow"></div>
+        </div>
+
+        <div class="bin-name" id="binName">—</div>
+        <div class="bin-instruction" id="binInstruction">Locate the correct coloured bin near you</div>
+      </div>
+
+      <!-- Confidence -->
+      <div class="conf-row">
+        <span class="conf-label">AI Confidence</span>
+        <span class="conf-pct" id="confPct" style="color:#52d68a">—</span>
+      </div>
+      <div class="conf-bar-bg"><div class="conf-bar-fill" id="confBar" style="background:#52d68a"></div></div>
+
+      <!-- Points -->
+      <div style="text-align:center; margin-bottom:1.5rem;">
+        <div class="points-badge">⭐ +10 Green Points Earned!</div>
+      </div>
+
+      <!-- Actions -->
+      <div class="action-row">
+        <a href="#" onclick="showPage('scanner');return false;" class="btn-scan">📷 Scan Again</a>
+        <button class="btn-gallery" id="galBtn">🖼️ Upload Photo</button>
+      </div>
+
+    </div>
+  </div>
+
+  <input type="file" id="resultGalleryInput" accept="image/*">
+
+  
+</div>
+
+<script>
+
+/* === Page Router === */
+const _PAGES = {home:'ww-home', scanner:'ww-scanner', result:'ww-result'};
+
+function showPage(name, params) {
+  // Remove all page-* body classes
+  document.body.classList.remove('page-home', 'page-scanner', 'page-result');
+  document.body.classList.add('page-' + name);
+  
+  // Toggle page visibility
+  document.querySelectorAll('.ww-page').forEach(function(p) { p.classList.remove('ww-active'); });
+  var el = document.getElementById(_PAGES[name]);
+  if (!el) return;
+  el.classList.add('ww-active');
+  window.scrollTo(0, 0);
+
+  if (name === 'result' && params) {
+    window._resultParams = new URLSearchParams(params).toString();
+    initResultPage();
+  }
+  if (name === 'scanner') { initScannerPage(); }
+  if (name === 'home') {
+    // Reset body styles for home
+    document.body.style.background = '';
+    document.body.style.overflow = '';
+  }
+}
+
+/* ===== HOME JS ===== */
+(function() {
+
+    /* ── Generate floating leaves ── */
+    const leavesBg = document.getElementById('leavesBg');
+    const leafEmojis = ['🍃', '🌿', '♻️', '🌱', '🍀', '🌾'];
+    for (let i = 0; i < 18; i++) {
+      const leaf = document.createElement('div');
+      leaf.className = 'leaf';
+      leaf.textContent = leafEmojis[Math.floor(Math.random() * leafEmojis.length)];
+      leaf.style.left = Math.random() * 100 + '%';
+      leaf.style.animationDuration = (10 + Math.random() * 18) + 's';
+      leaf.style.animationDelay = (Math.random() * 15) + 's';
+      leaf.style.fontSize = (1 + Math.random() * 1.2) + 'rem';
+      leavesBg.appendChild(leaf);
+    }
+
+    /* ── Cycle waste items in phone viewfinder ── */
+    const items = [
+      { emoji: '🍌', label: 'Banana Peel detected', bin: '🟢 Green Bin — Organic' },
+      { emoji: '📦', label: 'Cardboard Box detected', bin: '🔵 Blue Bin — Recyclable' },
+      { emoji: '🥤', label: 'Plastic Cup detected', bin: '🔵 Blue Bin — Recyclable' },
+      { emoji: '🔋', label: 'Battery detected', bin: '🔴 Red Bin — E-Waste' },
+      { emoji: '🍎', label: 'Apple Core detected', bin: '🟢 Green Bin — Organic' },
+      { emoji: '📰', label: 'Newspaper detected', bin: '🔵 Blue Bin — Paper' },
+    ];
+    let idx = 0;
+    const vfItem = document.getElementById('vfItem');
+    const resultLabel = document.getElementById('resultLabel');
+    const binTag = document.getElementById('binTag');
+
+    setInterval(() => {
+      idx = (idx + 1) % items.length;
+      vfItem.style.opacity = 0;
+      setTimeout(() => {
+        vfItem.textContent = items[idx].emoji;
+        resultLabel.textContent = items[idx].label;
+        binTag.textContent = items[idx].bin;
+        vfItem.style.transition = 'opacity 0.4s';
+        vfItem.style.opacity = 1;
+      }, 300);
+    }, 2800);
+
+    /* ── Scroll reveal ── */
+    const reveals = document.querySelectorAll('.reveal');
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry, i) => {
+        if (entry.isIntersecting) {
+          setTimeout(() => entry.target.classList.add('visible'), i * 80);
+          revealObserver.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12 });
+    reveals.forEach(el => revealObserver.observe(el));
+
+    /* Stagger grids */
+    document.querySelectorAll('.steps-row, .bins-grid, .counters-grid').forEach(grid => {
+      grid.querySelectorAll('.reveal').forEach((el, i) => {
+        el.style.transitionDelay = i * 0.1 + 's';
+      });
+    });
+
+    /* ── Animated counters ── */
+    const counters = document.querySelectorAll('.counter-num');
+    const countObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const el = entry.target;
+          const target = parseInt(el.dataset.target);
+          const suffix = el.dataset.suffix || '';
+          const prefix = el.dataset.prefix || '';
+          const duration = 1800;
+          const start = performance.now();
+          const update = (now) => {
+            const elapsed = now - start;
+            const progress = Math.min(elapsed / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            el.textContent = prefix + Math.round(target * eased).toLocaleString() + suffix;
+            if (progress < 1) requestAnimationFrame(update);
+          };
+          requestAnimationFrame(update);
+          countObserver.unobserve(el);
+        }
+      });
+    }, { threshold: 0.5 });
+    counters.forEach(el => countObserver.observe(el));
+  
+})();
+
+/* ===== SCANNER JS ===== */
+var _scannerInited = false;
+function initScannerPage() {
+  if (_scannerInited) return; _scannerInited = true;
+
+    /* ── Slideshow ── */
+    const LOCS = ['Rajwada Palace, Indore','Lal Bagh Palace, Indore','Sarafa Bazaar, Indore','Chappan Dukan, Indore','Kanch Mandir, Indore'];
+    const slides = document.querySelectorAll('#ww-scanner .bg-slide');
+    const dotsC  = document.getElementById('scannerSlideDots');
+    const locLbl = document.getElementById('locationLabel');
+    let cur = 0;
+    slides.forEach((_, i) => {
+      const d = document.createElement('div');
+      d.className = 'dot' + (i === 0 ? ' active' : '');
+      d.onclick = () => goTo(i);
+      dotsC.appendChild(d);
+    });
+    function goTo(n) {
+      slides[cur].classList.remove('active'); dotsC.children[cur].classList.remove('active');
+      cur = n;
+      slides[cur].classList.add('active'); dotsC.children[cur].classList.add('active');
+      locLbl.textContent = LOCS[cur];
+    }
+    window._scannerSlideInterval = setInterval(() => goTo((cur + 1) % slides.length), 4500);
+
+    /* ── Elements ── */
+    const video        = document.getElementById('videoEl');
+    const canvas       = document.getElementById('canvasEl');
+    const captureBtn   = document.getElementById('captureBtn');
+    const uploadPhotoBtn = document.getElementById('uploadPhotoBtn');
+    const galleryInput = document.getElementById('galleryInput');
+    const flashEl      = document.getElementById('flashEl');
+    const aiOverlay    = document.getElementById('analysingOverlay');
+    const statusText   = document.getElementById('statusText');
+    const errorBar     = document.getElementById('errorBar');
+    const camPH        = document.getElementById('camPlaceholder');
+    const camMsg       = document.getElementById('camMsg');
+
+    function setStatus(txt) { statusText.textContent = txt; }
+    function showError(msg) { errorBar.textContent = msg; errorBar.style.display = 'block'; }
+
+    /* ── Auto-start camera ── */
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+        });
+        video.srcObject = stream;
+        camPH.style.display = 'none';
+        captureBtn.disabled = false;
+        setStatus('Camera ready — point at garbage and tap Capture');
+      } catch (e) {
+        camMsg.textContent = 'Camera not available — use Upload Photo instead';
+        setStatus('No camera access');
+      }
+    }
+
+    startCamera();
+
+    /* ── CAPTURE: instant photo from live feed ── */
+    captureBtn.addEventListener('click', () => {
+      errorBar.style.display = 'none';
+      captureBtn.disabled = true;
+      uploadPhotoBtn.disabled = true;
+
+      // Flash effect
+      flashEl.style.transition = 'none';
+      flashEl.style.opacity = '1';
+      setTimeout(() => { flashEl.style.transition = 'opacity 0.4s'; flashEl.style.opacity = '0'; }, 80);
+
+      // Capture frame from video
+      canvas.width  = video.videoWidth  || 640;
+      canvas.height = video.videoHeight || 480;
+      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+      const base64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+
+      // Show AI overlay
+      aiOverlay.style.display = 'flex';
+      setStatus('AI is analysing your photo…');
+      sendToBackend(base64);
+    });
+
+    /* ── Upload Photo from gallery ── */
+    uploadPhotoBtn.addEventListener('click', () => {
+      galleryInput.value = '';
+      galleryInput.click();
+    });
+
+    galleryInput.addEventListener('change', () => {
+      const file = galleryInput.files[0];
+      if (!file) return;
+      errorBar.style.display = 'none';
+      captureBtn.disabled = true;
+      uploadPhotoBtn.disabled = true;
+      aiOverlay.style.display = 'flex';
+      setStatus('AI is analysing your photo…');
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const base64 = e.target.result.split(',')[1];
+        sendToBackend(base64);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    /* ── Send to Python backend and go to result ── */
+    async function sendToBackend(base64Image) {
+      try {
+        const res = await fetch('https://wastewise-backend-jwtk.onrender.com/predict', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ image: base64Image })
+        });
+
+        if (!res.ok) throw new Error('Server error ' + res.status);
+
+        const data = await res.json();
+
+        const params = new URLSearchParams({
+          type:       data.waste_type,
+          bin:        data.bin,
+          color:      data.color,
+          emoji:      data.emoji,
+          confidence: data.confidence
+        });
+
+        // Auto-navigate to result page
+        showPage('result', Object.fromEntries(params.entries()));
+
+      } catch (err) {
+        aiOverlay.style.display = 'none';
+        captureBtn.disabled = false;
+        uploadPhotoBtn.disabled = false;
+        setStatus('Error — try again');
+        showError('⚠️ Could not connect to AI server. Please try again in a moment.');
+      }
+    }
+  
+}
+
+/* ===== RESULT JS ===== */
+function initResultPage() {
+
+    // Guard: clear old slideshow interval 
+    if (window._resultSlideInterval) clearInterval(window._resultSlideInterval);
+    
+
+    /* ─── Slideshow ─── */
+    const locs   = ['Rajwada Palace, Indore','Lal Bagh Palace, Indore','Sarafa Bazaar, Indore','Chappan Dukan, Indore','Kanch Mandir, Indore'];
+    const slides = document.querySelectorAll('#ww-result .bg-slide');
+    const dotsC  = document.getElementById('resultSlideDots');
+    dotsC.innerHTML = '';  // Clear old dots to prevent duplicates on revisit
+    const locLbl = document.getElementById('locLabel');
+    let cur = 0;
+
+    slides.forEach((_, i) => {
+      const d = document.createElement('div');
+      d.className = 'dot' + (i === 0 ? ' active' : '');
+      d.onclick   = () => goTo(i);
+      dotsC.appendChild(d);
+    });
+
+    function goTo(n) {
+      slides[cur].classList.remove('active'); dotsC.children[cur].classList.remove('active');
+      cur = n;
+      slides[cur].classList.add('active'); dotsC.children[cur].classList.add('active');
+      locLbl.textContent = locs[cur];
+    }
+    window._resultSlideInterval = setInterval(() => goTo((cur + 1) % slides.length), 4500);
+
+    /* ─── Parse URL params ─── */
+    const p = new URLSearchParams(window._resultParams || '');
+    const type = (p.get('type')  || 'Unknown').toLowerCase();
+    const bin  = p.get('bin')    || 'General Bin';
+    const color= p.get('color')  || '#1b8a4c';
+    const emoji= p.get('emoji')  || '♻️';
+    const conf = parseFloat(p.get('confidence') || '0');
+
+    /* ─── Bin config table ─── */
+    const BIN_STYLES = {
+      'blue bin':   { bg:'#1d4ed8', lid:'#1e40af', glow:'#3b82f6', icon:'♻️', tip:'Recyclable materials' },
+      'green bin':  { bg:'#15803d', lid:'#166534', glow:'#22c55e', icon:'🌿', tip:'Food & organic waste' },
+      'black bin':  { bg:'#1f2937', lid:'#111827', glow:'#4b5563', icon:'🗑️', tip:'General / non-recyclable' },
+      'red bin':    { bg:'#b91c1c', lid:'#991b1b', glow:'#ef4444', icon:'⚠️', tip:'Hazardous / e-waste' },
+      'yellow bin': { bg:'#a16207', lid:'#854d0e', glow:'#eab308', icon:'🟡', tip:'Metal / aluminum cans' },
+      'white bin':  { bg:'#475569', lid:'#334155', glow:'#94a3b8', icon:'🫙', tip:'Glass items' },
+    };
+
+    // Match bin name to style
+    const binKey   = Object.keys(BIN_STYLES).find(k => bin.toLowerCase().includes(k.split(' ')[0])) || 'black bin';
+    const binStyle = BIN_STYLES[binKey] || BIN_STYLES['black bin'];
+
+    /* ─── Apply to page ─── */
+    document.getElementById('wasteEmoji').textContent   = emoji;
+    document.getElementById('wasteTypeName').textContent = type.charAt(0).toUpperCase() + type.slice(1);
+    document.getElementById('binName').textContent       = bin;
+    document.getElementById('binInstruction').textContent = binStyle.tip + ' — find the ' + bin;
+    document.getElementById('confPct').textContent       = conf.toFixed(1) + '%';
+    document.getElementById('confPct').style.color       = color;
+    document.getElementById('binBodyIcon').textContent   = binStyle.icon;
+
+    // Bin colors
+    document.getElementById('binBody').style.background = binStyle.bg;
+    document.getElementById('binBody').style.boxShadow  = `0 16px 50px ${binStyle.glow}55`;
+    document.getElementById('binLid').style.background  = binStyle.lid;
+    document.getElementById('binGlow').style.background = binStyle.glow;
+
+    // Card shimmer border
+    document.getElementById('resultCard').style.setProperty('--c1', color);
+    document.getElementById('resultCard').style.setProperty('--c2', binStyle.bg);
+
+    // Confidence bar
+    document.getElementById('confBar').style.background = `linear-gradient(90deg, ${binStyle.bg}, ${color})`;
+    setTimeout(() => {
+      document.getElementById('confBar').style.width = Math.min(conf, 100) + '%';
+    }, 200);
+
+    /* ─── Gallery Upload ─── */
+    const galBtn       = document.getElementById('galBtn');
+    const galleryInput = document.getElementById('resultGalleryInput');
+
+    if (!galBtn._bound) { galBtn._bound = true;
+    galBtn.addEventListener('click', () => galleryInput.click());
+    }
+
+    if (!galleryInput._bound) { galleryInput._bound = true;
+    galleryInput.addEventListener('change', async () => {
+      const file = galleryInput.files[0];
+      if (!file) return;
+      galBtn.textContent = '⏳ Analysing…';
+      galBtn.disabled = true;
+
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const base64 = e.target.result.split(',')[1];
+        try {
+          const res = await fetch('https://wastewise-backend-jwtk.onrender.com/predict', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: base64 })
+          });
+          const d = await res.json();
+          const params = new URLSearchParams({ type: d.waste_type, bin: d.bin, color: d.color, emoji: d.emoji, confidence: d.confidence });
+          showPage('result', Object.fromEntries(params.entries()));
+        } catch {
+          alert('Could not reach AI backend. Make sure api.py is running.');
+          galBtn.textContent = '🖼️ Upload Photo';
+          galBtn.disabled = false;
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+    }
+}
+
+</script>
+</body>
+</html>

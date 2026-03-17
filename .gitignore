@@ -1,0 +1,10 @@
+node_modules/
+.next/
+wastewise-app/
+wastewise/
+*.zip
+__pycache__/
+*.pyc
+.env
+.git/
+dist/
