@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WasteWise — Smart Scanner</title>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Outfit', sans-serif; min-height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
@@ -155,6 +156,45 @@
   <canvas id="canvasEl" style="display:none;"></canvas>
 
   <script>
+    /* ===== WASTEWISE AI — Browser-Side TFjs (No Server Needed!) ===== */
+    const CLASSES = ['cardboard','glass','metal','paper','plastic','trash'];
+    const BIN_MAP = {
+      plastic:   {bin:'Blue Bin',  color:'#2563eb', emoji:'🔵'},
+      paper:     {bin:'Blue Bin',  color:'#2563eb', emoji:'🔵'},
+      metal:     {bin:'Blue Bin',  color:'#2563eb', emoji:'🔵'},
+      cardboard: {bin:'Blue Bin',  color:'#2563eb', emoji:'🔵'},
+      glass:     {bin:'Blue Bin',  color:'#06b6d4', emoji:'🫙'},
+      trash:     {bin:'Black Bin', color:'#374151', emoji:'🗑️'}
+    };
+
+    var _wasteModel = null;
+    async function loadWasteModel() {
+      if (_wasteModel) return _wasteModel;
+      try {
+        setStatus('Loading AI model… (first time may take a moment)');
+        _wasteModel = await tf.loadGraphModel('./ai_model/model.json');
+        console.log('✅ TFjs model loaded in browser');
+        setStatus('Camera ready — point at garbage and tap Capture');
+      } catch(e) {
+        console.warn('Model load failed:', e);
+        setStatus('AI model failed to load — check connection');
+      }
+      return _wasteModel;
+    }
+
+    async function predictFromCanvas(canvasEl) {
+      const model = await loadWasteModel();
+      if (!model) return { type:'trash', bin:'Black Bin', color:'#374151', emoji:'🗑️', confidence:50 };
+      const img = tf.browser.fromPixels(canvasEl).resizeBilinear([224,224]).expandDims(0).div(255.0);
+      const pred = model.predict(img);
+      const probs = await pred.data();
+      img.dispose(); pred.dispose();
+      const idx = probs.indexOf(Math.max(...probs));
+      const cls = CLASSES[idx];
+      const info = BIN_MAP[cls] || BIN_MAP.trash;
+      return { type:cls, bin:info.bin, color:info.color, emoji:info.emoji, confidence:Math.round(probs[idx]*10000)/100 };
+    }
+
     /* ── Slideshow ── */
     const LOCS = ['Rajwada Palace, Indore','Lal Bagh Palace, Indore','Sarafa Bazaar, Indore','Chappan Dukan, Indore','Kanch Mandir, Indore'];
     const slides = document.querySelectorAll('.bg-slide');
@@ -191,7 +231,7 @@
     function setStatus(txt) { statusText.textContent = txt; }
     function showError(msg) { errorBar.textContent = msg; errorBar.style.display = 'block'; }
 
-    /* ── Auto-start camera ── */
+    /* ── Auto-start camera + preload AI model ── */
     async function startCamera() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -200,17 +240,19 @@
         video.srcObject = stream;
         camPH.style.display = 'none';
         captureBtn.disabled = false;
-        setStatus('Camera ready — point at garbage and tap Capture');
+        setStatus('Camera ready — loading AI model…');
       } catch (e) {
         camMsg.textContent = 'Camera not available — use Upload Photo instead';
         setStatus('No camera access');
       }
+      // Preload AI model in background
+      loadWasteModel();
     }
 
     window.addEventListener('load', startCamera);
 
     /* ── CAPTURE: instant photo from live feed ── */
-    captureBtn.addEventListener('click', () => {
+    captureBtn.addEventListener('click', async () => {
       errorBar.style.display = 'none';
       captureBtn.disabled = true;
       uploadPhotoBtn.disabled = true;
@@ -224,12 +266,28 @@
       canvas.width  = video.videoWidth  || 640;
       canvas.height = video.videoHeight || 480;
       canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-      const base64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
 
-      // Show AI overlay
+      // Show AI overlay & run prediction in browser
       aiOverlay.style.display = 'flex';
       setStatus('AI is analysing your photo…');
-      sendToBackend(base64);
+
+      try {
+        const data = await predictFromCanvas(canvas);
+        const params = new URLSearchParams({
+          type:       data.type,
+          bin:        data.bin,
+          color:      data.color,
+          emoji:      data.emoji,
+          confidence: data.confidence
+        });
+        window.location.href = 'dusbin/index.html?' + params.toString();
+      } catch (err) {
+        aiOverlay.style.display = 'none';
+        captureBtn.disabled = false;
+        uploadPhotoBtn.disabled = false;
+        setStatus('Error — try again');
+        showError('⚠️ AI could not process the image. Please try again.');
+      }
     });
 
     /* ── Upload Photo from gallery ── */
@@ -247,46 +305,30 @@
       aiOverlay.style.display = 'flex';
       setStatus('AI is analysing your photo…');
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const base64 = e.target.result.split(',')[1];
-        sendToBackend(base64);
+      const img = new Image();
+      img.onload = async () => {
+        canvas.width = img.width; canvas.height = img.height;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+        try {
+          const data = await predictFromCanvas(canvas);
+          const params = new URLSearchParams({
+            type:       data.type,
+            bin:        data.bin,
+            color:      data.color,
+            emoji:      data.emoji,
+            confidence: data.confidence
+          });
+          window.location.href = 'dusbin/index.html?' + params.toString();
+        } catch (err) {
+          aiOverlay.style.display = 'none';
+          captureBtn.disabled = false;
+          uploadPhotoBtn.disabled = false;
+          setStatus('Error — try again');
+          showError('⚠️ AI could not process the image. Please try again.');
+        }
       };
-      reader.readAsDataURL(file);
+      img.src = URL.createObjectURL(file);
     });
-
-    /* ── Send to Python backend and go to result ── */
-    async function sendToBackend(base64Image) {
-      try {
-        const res = await fetch('https://wastewise-backend-jwtk.onrender.com/predict', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ image: base64Image })
-        });
-
-        if (!res.ok) throw new Error('Server error ' + res.status);
-
-        const data = await res.json();
-
-        const params = new URLSearchParams({
-          type:       data.waste_type,
-          bin:        data.bin,
-          color:      data.color,
-          emoji:      data.emoji,
-          confidence: data.confidence
-        });
-
-        // Auto-navigate to result page
-        window.location.href = 'dusbin/index.html?' + params.toString();
-
-      } catch (err) {
-        aiOverlay.style.display = 'none';
-        captureBtn.disabled = false;
-        uploadPhotoBtn.disabled = false;
-        setStatus('Error — try again');
-        showError('⚠️ Could not connect to AI server. Please try again in a moment.');
-      }
-    }
   </script>
 </body>
 </html>
